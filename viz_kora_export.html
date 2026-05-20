@@ -1,0 +1,2743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KORA · Child AI Developmental Outcomes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0f0e0c; --paper:#f7f4ef; --cream:#ede9e1; --rule:#c8c0b0;
+  --accent:#F5B700; --muted:#8b8070; --white:#ffffff;
+  --risk:#dc2626; --benefit:#059669;
+  --fn:'DM Sans',sans-serif; --fm:'DM Mono',monospace; --fs:'DM Serif Display',serif;
+}
+html,body{width:100%;height:100%;background:var(--paper);color:var(--ink);font-family:var(--fn);overflow:hidden}
+
+/* ── HEADER (KORA spec: logo + title + date only, centered) ── */
+#hd{
+  position:fixed;top:0;left:0;right:0;height:60px;
+  background:var(--ink);z-index:200;
+  display:flex;align-items:center;padding:0 28px;gap:0;
+}
+/* Logo left */
+.hd-logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.hd-logo svg{width:28px;height:28px}
+.hd-logo-text{font-family:var(--fn);font-size:17px;font-weight:700;color:var(--paper);letter-spacing:.04em;line-height:1}
+/* Title center */
+.hd-center{flex:1;text-align:center}
+.hd-center h1{
+  font-family:var(--fs);font-size:20px;font-weight:400;
+  color:var(--paper);letter-spacing:0;line-height:1
+}
+.hd-center h1 em{color:var(--accent);font-style:italic}
+/* Date right */
+.hd-date{
+  font-family:var(--fm);font-size:8px;letter-spacing:.12em;
+  text-transform:uppercase;color:rgba(247,244,239,.3);flex-shrink:0
+}
+
+/* ── LAYOUT ── */
+#viz{position:fixed;top:100px;left:0;right:380px;bottom:0;background:var(--paper)}
+#panel{
+  position:fixed;right:0;top:100px;width:380px;height:calc(100vh - 100px);
+  background:var(--white);border-left:1px solid var(--rule);
+  display:flex;flex-direction:column;overflow:hidden
+}
+
+/* ── PANEL ── */
+#ph{padding:20px 22px 16px;border-bottom:1px solid var(--rule);flex-shrink:0;display:none}
+#pb{flex:1;overflow-y:auto;padding:16px 22px 24px}
+#pb::-webkit-scrollbar{width:4px}
+#pb::-webkit-scrollbar-thumb{background:var(--rule)}
+
+.p-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:32px}
+.p-empty-icon{font-size:28px;opacity:.18;color:var(--ink)}
+.p-empty-title{font-family:var(--fs);font-size:18px;color:var(--muted)}
+.p-empty-body{font-size:11px;color:var(--muted);line-height:1.7;max-width:240px}
+.p-empty-tag{font-family:var(--fm);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--rule);margin-top:8px}
+
+.ph-sec-label{font-family:var(--fm);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.ph-title{font-family:var(--fs);font-size:22px;font-weight:400;color:var(--ink);margin-bottom:2px;line-height:1.15}
+.ph-sub{font-size:11px;color:var(--muted);line-height:1.55;margin-bottom:14px}
+
+.bar-row{height:5px;border-radius:3px;overflow:hidden;display:flex;gap:1px;margin-bottom:3px}
+.bar-risk{background:var(--risk);opacity:.6}
+.bar-ben{background:var(--benefit);opacity:.6}
+.bar-lbl{display:flex;justify-content:space-between;font-family:var(--fm);font-size:8px;letter-spacing:.05em;color:var(--muted)}
+
+.stat-row{display:flex;gap:0;margin-top:14px;border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.stat-cell{flex:1;padding:10px 0;text-align:center;border-right:1px solid var(--rule)}
+.stat-cell:last-child{border-right:none}
+.stat-n{font-family:var(--fs);font-size:22px;color:var(--ink)}
+.stat-l{font-family:var(--fm);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:1px}
+
+.p-sec{font-family:var(--fm);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:16px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--cream)}
+.mech-list{display:flex;flex-direction:column;gap:4px}
+.mech-pill{padding:6px 10px;border-radius:2px;font-size:11px;line-height:1.45;border-left:3px solid}
+.mech-pill.r{background:#fef2f2;border-color:var(--risk);color:#991b1b}
+.mech-pill.b{background:#f0fdf4;border-color:var(--benefit);color:#065f46}
+.st-item{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--cream)}
+.st-item:last-child{border-bottom:none}
+.st-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.st-text{font-size:10.5px;line-height:1.5;color:#3a3830}
+.st-meta{font-family:var(--fm);font-size:8px;color:var(--muted);margin-top:2px}
+.callout{background:var(--paper);border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:0 3px 3px 0;padding:10px 12px;margin-top:14px;font-size:11px;color:#3a3830;line-height:1.6}
+.callout strong{color:var(--ink)}
+.gap-badge{display:inline-block;font-family:var(--fm);font-size:8px;letter-spacing:.08em;text-transform:uppercase;background:rgba(245,183,0,.15);color:#7a5c00;padding:3px 8px;border-radius:2px;margin-bottom:10px}
+
+/* ── TABS ── */
+#tab-bar{
+  position:fixed;top:60px;left:0;right:0;height:40px;z-index:50;
+  background:var(--white);border-bottom:1px solid var(--rule);
+  display:flex;align-items:stretch;
+}
+.tab-btn{
+  padding:0 24px;font-family:var(--fm);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);border:none;background:none;cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;
+}
+.tab-btn.active{color:var(--ink);border-bottom-color:var(--accent)}
+.tab-btn:hover:not(.active){color:var(--ink)}
+
+/* ── SAFETY TAB LAYOUT ── */
+#tab-safety{display:none;position:fixed;top:100px;left:0;right:0;bottom:0}
+#tab-safety.open{display:flex}
+#safety-canvas{flex:1;position:relative;overflow:hidden;background:var(--paper)}
+#safety-panel{
+  width:360px;flex-shrink:0;background:var(--white);
+  border-left:1px solid var(--rule);overflow-y:auto;
+}
+#safety-panel::-webkit-scrollbar{width:4px}
+#safety-panel::-webkit-scrollbar-thumb{background:var(--rule)}
+#sp-body{padding:28px 24px 32px}
+.sp-cluster-label{font-family:var(--fm);font-size:8px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;opacity:.85}
+.sp-node-title{font-family:var(--fs);font-size:21px;line-height:1.2;color:var(--ink);margin-bottom:0}
+.sp-divider{height:3px;width:32px;opacity:.5;margin:10px 0 16px;border-radius:2px}
+.sp-section{margin-bottom:18px}
+.sp-section-lbl{font-family:var(--fm);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--cream)}
+.sp-desc{font-size:11.5px;line-height:1.7;color:#3a3830}
+.sp-links-list{display:flex;flex-direction:column;gap:4px}
+.sp-link-item{display:flex;align-items:flex-start;gap:8px;padding:7px 9px;border-radius:2px;background:var(--paper);font-size:10.5px;line-height:1.5;color:#3a3830}
+.sp-link-arr{color:var(--muted);flex-shrink:0;font-size:10px;margin-top:1px}
+.sp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:40px;min-height:340px}
+.sp-empty-icon{font-size:26px;opacity:.13}
+.sp-empty-title{font-family:var(--fs);font-size:18px;color:var(--muted)}
+.sp-empty-body{font-size:11px;color:var(--muted);line-height:1.75;max-width:220px}
+#safety-legend{
+  position:absolute;bottom:20px;left:20px;display:flex;gap:14px;
+  background:rgba(247,244,239,.92);border:1px solid var(--rule);
+  border-radius:4px;padding:9px 16px;pointer-events:none;
+}
+.leg-item{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+
+/* ── BENCHMARK LANDSCAPE TAB ── */
+#tab-benchmark{display:none;position:fixed;top:100px;left:0;right:0;bottom:0}
+#tab-benchmark.open{display:flex}
+#bl-canvas{flex:1;position:relative;overflow:hidden;background:var(--paper)}
+#bl-panel{width:360px;flex-shrink:0;background:var(--white);border-left:1px solid var(--rule);overflow-y:auto;display:flex;flex-direction:column}
+#bl-panel::-webkit-scrollbar{width:4px}
+#bl-panel::-webkit-scrollbar-thumb{background:var(--rule)}
+#bl-filters{padding:12px 18px 10px;border-bottom:1px solid var(--rule);flex-shrink:0}
+#bl-filters-label{font-family:var(--fm);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+#bl-filter-btns{display:flex;flex-wrap:wrap;gap:4px}
+.bl-fbtn{padding:3px 9px;border-radius:2px;border:1px solid var(--rule);font-family:var(--fm);font-size:8px;letter-spacing:.06em;text-transform:uppercase;background:none;cursor:pointer;color:var(--muted);transition:all .15s}
+.bl-fbtn.active{color:var(--white);border-color:transparent}
+#bl-body{flex:1;overflow-y:auto;padding:20px 22px 32px}
+#bl-body::-webkit-scrollbar{width:4px}
+#bl-body::-webkit-scrollbar-thumb{background:var(--rule)}
+.bl-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:40px;min-height:300px}
+.bl-empty-icon{font-size:26px;opacity:.13}
+.bl-empty-title{font-family:var(--fs);font-size:18px;color:var(--muted)}
+.bl-empty-body{font-size:11px;color:var(--muted);line-height:1.75;max-width:220px}
+.bl-type-badge{display:inline-block;font-family:var(--fm);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:2px;margin-bottom:10px}
+.bl-node-title{font-family:var(--fs);font-size:19px;line-height:1.2;color:var(--ink)}
+.bl-divider{height:3px;width:32px;opacity:.45;margin:10px 0 16px;border-radius:2px}
+.bl-section{margin-bottom:16px}
+.bl-section-lbl{font-family:var(--fm);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--cream)}
+.bl-desc{font-size:11px;line-height:1.7;color:#3a3830}
+.bl-cov-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.bl-cov-sphere{font-family:var(--fm);font-size:8px;color:var(--muted);width:100px;flex-shrink:0}
+.bl-cov-bar{flex:1;height:4px;border-radius:2px;background:var(--cream);overflow:hidden}
+.bl-cov-fill{height:100%;border-radius:2px}
+.bl-cov-val{font-family:var(--fm);font-size:8px;color:var(--muted);width:28px;text-align:right}
+.bl-risk-list{display:flex;flex-direction:column;gap:3px}
+.bl-risk-item{display:flex;align-items:flex-start;gap:6px;padding:4px 8px;border-radius:2px;background:var(--paper);font-size:10px;line-height:1.45;color:#3a3830}
+.bl-risk-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.bl-gap-badge{display:inline-block;font-family:var(--fm);font-size:7.5px;letter-spacing:.08em;text-transform:uppercase;background:rgba(220,38,38,.08);color:#991b1b;padding:3px 8px;border-radius:2px;margin-bottom:8px}
+.bl-gap-info{font-size:11px;line-height:1.65;color:#991b1b;font-style:italic}
+#bl-legend{position:absolute;bottom:16px;left:16px;display:flex;flex-direction:column;gap:10px;background:rgba(247,244,239,.93);border:1px solid var(--rule);border-radius:4px;padding:10px 14px;pointer-events:none;font-size:0}
+.bl-leg-section{display:flex;flex-direction:column;gap:3px}
+.bl-leg-title{font-family:var(--fm);font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--rule);margin-bottom:2px}
+.bl-leg-item{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:7.5px;letter-spacing:.05em;color:var(--muted)}
+.bl-leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.bl-leg-sq{width:7px;height:7px;border-radius:1px;flex-shrink:0}
+#bl-zoom-hint{position:absolute;bottom:16px;right:16px;font-family:var(--fm);font-size:7.5px;color:var(--rule);letter-spacing:.06em;text-transform:uppercase;pointer-events:none}
+
+
+/* ── BENCHMARK LANDSCAPE TAB ── */
+#tab-benchmark{display:none;position:fixed;top:100px;left:0;right:0;bottom:0}
+#tab-benchmark.open{display:flex}
+#bl-canvas{flex:1;position:relative;overflow:hidden;background:var(--paper)}
+#bl-panel{width:360px;flex-shrink:0;background:var(--white);border-left:1px solid var(--rule);overflow-y:auto;display:flex;flex-direction:column}
+#bl-panel::-webkit-scrollbar{width:4px}
+#bl-panel::-webkit-scrollbar-thumb{background:var(--rule)}
+#bl-filters{padding:12px 18px 10px;border-bottom:1px solid var(--rule);flex-shrink:0}
+#bl-filters-label{font-family:var(--fm);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+#bl-filter-btns{display:flex;flex-wrap:wrap;gap:4px}
+.bl-fbtn{padding:3px 9px;border-radius:2px;border:1px solid var(--rule);font-family:var(--fm);font-size:8px;letter-spacing:.06em;text-transform:uppercase;background:none;cursor:pointer;color:var(--muted);transition:all .15s}
+.bl-fbtn.active{color:var(--white);border-color:transparent}
+#bl-body{flex:1;overflow-y:auto;padding:20px 22px 32px}
+#bl-body::-webkit-scrollbar{width:4px}
+#bl-body::-webkit-scrollbar-thumb{background:var(--rule)}
+.bl-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:40px;min-height:300px}
+.bl-empty-icon{font-size:26px;opacity:.13}
+.bl-empty-title{font-family:var(--fs);font-size:18px;color:var(--muted)}
+.bl-empty-body{font-size:11px;color:var(--muted);line-height:1.75;max-width:220px}
+.bl-type-badge{display:inline-block;font-family:var(--fm);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:2px;margin-bottom:10px}
+.bl-node-title{font-family:var(--fs);font-size:19px;line-height:1.2;color:var(--ink)}
+.bl-divider{height:3px;width:32px;opacity:.45;margin:10px 0 16px;border-radius:2px}
+.bl-section{margin-bottom:16px}
+.bl-section-lbl{font-family:var(--fm);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--cream)}
+.bl-desc{font-size:11px;line-height:1.7;color:#3a3830}
+.bl-cov-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.bl-cov-sphere{font-family:var(--fm);font-size:8px;color:var(--muted);width:100px;flex-shrink:0}
+.bl-cov-bar{flex:1;height:4px;border-radius:2px;background:var(--cream);overflow:hidden}
+.bl-cov-fill{height:100%;border-radius:2px}
+.bl-cov-val{font-family:var(--fm);font-size:8px;color:var(--muted);width:28px;text-align:right}
+.bl-risk-list{display:flex;flex-direction:column;gap:3px}
+.bl-risk-item{display:flex;align-items:flex-start;gap:6px;padding:4px 8px;border-radius:2px;background:var(--paper);font-size:10px;line-height:1.45;color:#3a3830}
+.bl-risk-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.bl-gap-badge{display:inline-block;font-family:var(--fm);font-size:7.5px;letter-spacing:.08em;text-transform:uppercase;background:rgba(220,38,38,.08);color:#991b1b;padding:3px 8px;border-radius:2px;margin-bottom:8px}
+.bl-gap-info{font-size:11px;line-height:1.65;color:#991b1b;font-style:italic}
+#bl-legend{position:absolute;bottom:16px;left:16px;display:flex;flex-direction:column;gap:10px;background:rgba(247,244,239,.93);border:1px solid var(--rule);border-radius:4px;padding:10px 14px;pointer-events:none;font-size:0}
+.bl-leg-section{display:flex;flex-direction:column;gap:3px}
+.bl-leg-title{font-family:var(--fm);font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--rule);margin-bottom:2px}
+.bl-leg-item{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:7.5px;letter-spacing:.05em;color:var(--muted)}
+.bl-leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.bl-leg-sq{width:7px;height:7px;border-radius:1px;flex-shrink:0}
+#bl-zoom-hint{position:absolute;bottom:16px;right:16px;font-family:var(--fm);font-size:7.5px;color:var(--rule);letter-spacing:.06em;text-transform:uppercase;pointer-events:none}
+
+
+/* ── BENCHMARK LANDSCAPE v3 ── */
+#tab-benchmark{display:none;position:fixed;top:100px;left:0;right:0;bottom:0}
+#tab-benchmark.open{display:flex}
+#bl-canvas{flex:1;position:relative;overflow:hidden;background:var(--paper)}
+#bl-panel{width:340px;flex-shrink:0;background:var(--white);border-left:1px solid var(--rule);overflow-y:auto;display:flex;flex-direction:column}
+#bl-panel::-webkit-scrollbar{width:4px}
+#bl-panel::-webkit-scrollbar-thumb{background:var(--rule)}
+#bl-toolbar{position:absolute;top:14px;left:16px;display:flex;gap:8px;z-index:10;flex-wrap:wrap;max-width:calc(100% - 32px)}
+.bl-tbtn{padding:4px 11px;border-radius:2px;border:1px solid var(--rule);font-family:var(--fm);font-size:8px;letter-spacing:.07em;text-transform:uppercase;background:var(--white);cursor:pointer;color:var(--muted);transition:all .15s;white-space:nowrap}
+.bl-tbtn.active{color:var(--white);border-color:transparent}
+.bl-tbtn.view-toggle{background:var(--ink);color:var(--white);border-color:var(--ink);margin-left:8px}
+#bl-axes{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;z-index:5}
+.bl-axis-x{font-family:var(--fm);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--rule)}
+#bl-body{flex:1;overflow-y:auto;padding:20px 20px 32px}
+#bl-body::-webkit-scrollbar{width:4px}
+#bl-body::-webkit-scrollbar-thumb{background:var(--rule)}
+.bl-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:40px;min-height:300px}
+.bl-empty-icon{font-size:24px;opacity:.12}
+.bl-empty-title{font-family:var(--fs);font-size:17px;color:var(--muted)}
+.bl-empty-body{font-size:11px;color:var(--muted);line-height:1.75;max-width:210px}
+.bl-type-badge{display:inline-block;font-family:var(--fm);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:2px;margin-bottom:9px}
+.bl-node-title{font-family:var(--fs);font-size:18px;line-height:1.2;color:var(--ink)}
+.bl-divider{height:3px;width:28px;opacity:.45;margin:9px 0 14px;border-radius:2px}
+.bl-meta{font-family:var(--fm);font-size:8px;color:var(--muted);margin-bottom:14px}
+.bl-section{margin-bottom:14px}
+.bl-section-lbl{font-family:var(--fm);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--cream)}
+.bl-desc{font-size:11px;line-height:1.7;color:#3a3830}
+.bl-spec-row{display:flex;gap:10px;margin-bottom:10px}
+.bl-spec-cell{flex:1;background:var(--paper);border-radius:3px;padding:8px 10px;text-align:center}
+.bl-spec-val{font-family:var(--fs);font-size:20px;color:var(--ink)}
+.bl-spec-lbl{font-family:var(--fm);font-size:7px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.bl-cov-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.bl-cov-sphere{font-family:var(--fm);font-size:7.5px;color:var(--muted);width:88px;flex-shrink:0;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.bl-cov-bar{flex:1;height:4px;border-radius:2px;background:var(--cream);overflow:hidden}
+.bl-cov-fill{height:100%;border-radius:2px}
+.bl-cov-val{font-family:var(--fm);font-size:7.5px;color:var(--muted);width:26px;text-align:right}
+.bl-gap-badge{display:inline-block;font-family:var(--fm);font-size:7.5px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:2px;margin-bottom:8px}
+#bl-legend{display:none}
+.bl-leg-title{font-family:var(--fm);font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--rule);margin-bottom:5px}
+.bl-leg-item{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:7.5px;color:var(--muted);margin-bottom:3px}
+.bl-leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+#bl-stats{position:absolute;bottom:16px;right:14px;font-family:var(--fm);font-size:8px;color:var(--rule);text-align:right;pointer-events:none;line-height:1.6}
+
+
+#bl-legend-v3{padding:10px 14px 6px;border-bottom:1px solid var(--rule)}
+#bl-legend-v3 .bl-leg-grid{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+#bl-legend-v3 .bl-leg-item{display:flex;align-items:center;gap:6px;font-family:"DM Mono",monospace;font-size:9px;color:var(--ink);letter-spacing:.04em}
+#bl-legend-v3 .bl-leg-sq{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+#bl-legend-v3 .bl-leg-title{font-family:"DM Mono",monospace;font-size:8px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+
+/* ── KORA FRAMEWORK PANEL ── */
+.ev-tier-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.ev-tier-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.ev-tier-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);width:62px;flex-shrink:0}
+.ev-tier-bar{flex:1;height:5px;border-radius:3px;background:var(--cream);overflow:hidden}
+.ev-tier-fill{height:100%;border-radius:3px}
+.ev-tier-n{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);width:24px;text-align:right;flex-shrink:0}
+.ev-tier-pct{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);width:30px;text-align:right;flex-shrink:0}
+
+.eff-row{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+.eff-icon{font-size:11px;width:14px;flex-shrink:0;text-align:center}
+.eff-label{font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);width:86px;flex-shrink:0}
+.eff-bar{flex:1;height:4px;border-radius:2px;background:var(--cream);overflow:hidden}
+.eff-fill{height:100%;border-radius:2px}
+.eff-n{font-family:'DM Mono',monospace;font-size:8px;width:44px;text-align:right;flex-shrink:0}
+
+.finding-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:2px;margin-bottom:4px}
+.finding-body{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.finding-text{font-size:12px;line-height:1.5;color:#3a3830}
+.finding-citation{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+.finding-citation a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--rule)}
+.finding-citation a:hover{color:var(--ink)}
+.st-link{color:inherit;text-decoration:none;border-bottom:1px dotted var(--rule)}
+.st-link:hover{color:var(--ink);border-bottom-color:var(--ink)}
+.st-tier-badge{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.06em;padding:2px 5px;border-radius:2px;font-weight:500}
+.st-note{font-size:10.5px;color:var(--muted);font-style:italic}
+/* ── Evidence filter tab bar ── */
+.ev-filter-tabs{display:flex;align-items:center;gap:6px;margin:12px 0 14px;flex-wrap:wrap}
+.ev-tab{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  padding:5px 12px;border-radius:2px;border:1px solid var(--rule);background:var(--white);
+  color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s}
+.ev-tab.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.ev-tab:hover:not(.active){background:var(--cream);color:var(--ink)}
+.ev-tab-count{font-size:9px;background:rgba(255,255,255,.15);padding:1px 5px;border-radius:10px}
+.ev-tab.active .ev-tab-count{background:rgba(255,255,255,.15)}
+.ev-tab:not(.active) .ev-tab-count{background:var(--cream);color:var(--muted)}
+.ev-tab-info{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);display:flex;align-items:center;gap:5px}
+/* ── Industry badge ── */
+.industry-badge-sm{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.06em;
+  text-transform:uppercase;background:#fff3cd;color:#856404;border:1px solid #ffd96640;
+  padding:2px 6px;border-radius:2px;white-space:nowrap}
+.industry-callout{background:#fff9e6;border:1px solid #ffd966;border-left:3px solid #f5b700;
+  border-radius:0 2px 2px 0;padding:8px 12px;font-size:11px;color:#78650a;margin-bottom:10px}
+/* ── Hidden industry details/summary ── */
+.industry-hidden{margin-top:6px}
+.industry-summary{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);cursor:pointer;padding:4px 0}
+.industry-summary:hover{color:var(--ink)}
+/* ── Filter tag in section headers ── */
+.filter-tag{display:inline-block;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.05em;
+  background:#fff3cd;color:#856404;border:1px solid #ffd96660;padding:1px 6px;border-radius:2px;
+  margin-left:8px;font-weight:400;text-transform:none}
+.finding-item.pos{background:#f0fdf4;border-left:3px solid #059669}
+.finding-item.neg{background:#fef2f2;border-left:3px solid #dc2626}
+.finding-item.cond{background:#fffbeb;border-left:3px solid #d97706}
+.finding-badge{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:.06em;text-transform:uppercase;padding:2px 5px;border-radius:2px;flex-shrink:0;margin-top:1px}
+.finding-badge.strict{background:rgba(15,14,12,0.08);color:#0f0e0c}
+.finding-badge.mod{background:rgba(200,192,176,0.3);color:#5a5248}
+.finding-text{font-size:10.5px;line-height:1.5;color:#3a3830}
+
+.ev-qual-pct{font-family:'DM Serif Display',serif;font-size:32px;color:var(--ink);line-height:1}
+.ev-qual-lbl{font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+
+
+/* ── Independent tab badge ── */
+.tab-ind-badge{font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:.06em;
+  text-transform:uppercase;background:rgba(245,183,0,.18);color:#7a5c00;
+  padding:1px 5px;border-radius:2px;margin-left:4px;font-weight:500}
+.tab-btn.active .tab-ind-badge{background:rgba(245,183,0,.38);color:#5c4300}
+
+/* ── MECHANISM PILLS ── */
+.mech-section { margin-top:14px; }
+.mech-pill-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.mech-pill {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:4px 10px; border-radius:12px; font-size:10px;
+  font-family:var(--fm); letter-spacing:.04em; line-height:1.3;
+  border:1px solid transparent; cursor:default;
+}
+.mech-pill-pos  { background:#e8f5ee; color:#1a5c38; border-color:#b6d9c5; }
+.mech-pill-neg  { background:#fce4e4; color:#8b2020; border-color:#f0b4b4; }
+.mech-pill-cond { background:rgba(245,183,0,.14); color:#7a5200; border-color:#e0c060; }
+.mech-pill-icon { font-size:11px; font-weight:700; flex-shrink:0; }
+.mech-note { font-size:10px; color:var(--muted); margin-top:6px; line-height:1.4; font-style:italic; }
+
+
+/* ── MECHANISM BUBBLE TAB ── */
+#tab-mech {
+  display:none; position:fixed; top:100px; left:0; right:0; bottom:0;
+  background:var(--paper); overflow:hidden;
+}
+#tab-mech.open { display:flex; }
+#mech-svg-wrap {
+  flex:1; position:relative; overflow:hidden;
+}
+#mech-svg { width:100%; height:100%; }
+#mech-detail-panel {
+  width:300px; flex-shrink:0;
+  border-left:1px solid var(--rule);
+  background:var(--white);
+  overflow-y:auto;
+  display:flex; flex-direction:column;
+}
+#mech-detail-ph {
+  padding:22px 20px 16px;
+  border-bottom:1px solid var(--rule);
+  display:none;
+}
+#mech-detail-body { padding:16px 20px; flex:1; overflow-y:auto; }
+#mech-empty-state {
+  padding:40px 24px; text-align:center; color:var(--muted);
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.mech-empty-icon { font-size:32px; margin-bottom:12px; opacity:.4; }
+.mech-empty-lbl { font-size:12px; line-height:1.5; }
+/* Bubble labels */
+.mech-bubble-lbl { pointer-events:none; }
+/* Axis labels */
+.mech-axis-lbl {
+  font-family:'DM Mono', monospace; font-size:9px; letter-spacing:.12em;
+  text-transform:uppercase; fill:var(--muted); pointer-events:none;
+}
+/* Legend */
+#mech-legend {
+  position:absolute; bottom:16px; left:20px;
+  background:rgba(247,244,239,.95); border:1px solid var(--rule);
+  border-radius:4px; padding:10px 14px;
+  display:flex; flex-direction:column; gap:7px;
+  pointer-events:none;
+}
+.mech-leg-item { display:flex; align-items:center; gap:8px; font-size:10px; color:var(--ink); }
+.mech-leg-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+/* Detail panel styles */
+.mech-dp-tag {
+  font-family:'DM Mono',monospace; font-size:8px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:5px;
+}
+/* ── Industry Impact tab ── */
+#tab-industry {
+  display:none; position:fixed; top:100px; left:0; right:0; bottom:0;
+  background:var(--paper); overflow:hidden;
+}
+#tab-industry.open { display:flex; }
+#industry-viz-wrap {
+  flex:1; position:relative; overflow:hidden;
+}
+#industry-svg { width:100%; height:100%; }
+#industry-info-panel {
+  width:300px; flex-shrink:0;
+  border-left:1px solid var(--rule);
+  background:var(--white);
+  overflow-y:auto;
+  padding:22px 20px;
+  font-family:'DM Sans',sans-serif;
+  font-size:12px;
+  color:var(--ink);
+  line-height:1.6;
+}
+.ind-panel-tag {
+  font-family:'DM Mono',monospace; font-size:8px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:8px; margin-top:20px;
+}
+.ind-panel-tag:first-child { margin-top:0; }
+.ind-panel-h { font-family:'DM Serif Display',serif; font-size:15px; color:var(--ink); margin-bottom:10px; }
+.ind-panel-text { color:var(--sub); font-size:11px; line-height:1.6; margin-bottom:6px; }
+.ind-stat-row {
+  display:flex; justify-content:space-between; align-items:baseline;
+  padding:6px 0; border-bottom:1px solid var(--rule); font-size:11px;
+}
+.ind-stat-row:last-child { border-bottom:none; }
+.ind-stat-lbl { color:var(--sub); }
+.ind-stat-val { font-family:'DM Mono',monospace; font-size:10px; font-weight:600; }
+.ind-stat-val.pos { color:#166534; }
+.ind-stat-val.neg { color:#991b1b; }
+.ind-stat-val.neu { color:#78716c; }
+.mech-dp-title {
+  font-family:'DM Serif Display',serif; font-size:20px; font-weight:400;
+  color:var(--ink); margin-bottom:8px; line-height:1.2;
+}
+.mech-dp-dir {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:3px 10px; border-radius:10px; font-size:10px;
+  font-family:'DM Mono',monospace; margin-bottom:12px;
+}
+.mech-dp-dir.pos  { background:#d6f0e0; color:#1a5c38; }
+.mech-dp-dir.neg  { background:#fce4e4; color:#8b2020; }
+.mech-dp-dir.cond { background:rgba(245,183,0,.18); color:#7a5200; }
+.mech-dp-desc { font-size:12px; color:#3a3830; line-height:1.6; margin-bottom:14px; }
+.mech-dp-row { display:flex; justify-content:space-between; align-items:center;
+  padding:7px 0; border-bottom:1px solid var(--cream); font-size:11px; }
+.mech-dp-row:last-child { border-bottom:none; }
+.mech-dp-key { color:var(--muted); }
+.mech-dp-val { font-weight:600; color:var(--ink); }
+.mech-sphere-tag {
+  display:inline-block; background:var(--cream); color:var(--ink);
+  font-size:9px; font-family:'DM Mono',monospace; letter-spacing:.06em;
+  padding:2px 7px; border-radius:10px; margin:2px 2px 0 0;
+}
+
+</style>
+</head>
+<body>
+<!-- TAB BAR -->
+
+  <div id="industry-banner" style="display:none">
+    <span style="font-weight:600">118 industry/builder studies excluded:</span>
+    Khan Academy (Khanmigo), Duolingo, MagicSchool AI, Anthropic, OpenAI, Google (Gemini), Microsoft, Carnegie Learning, Synthesis AI — internal evaluations &amp; white papers
+  </div>
+</div>
+
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('spheres')">AI Developmental Outcomes</button>
+  <button class="tab-btn" onclick="switchTab('industry')">Industry Impact <span class="tab-ind-badge">bias analysis</span></button>
+  <button class="tab-btn" onclick="switchTab('safety')">AI Safety Landscape</button>
+  <button class="tab-btn" onclick="switchTab('mech')">Causal Mechanisms</button>
+</div>
+
+<div id="tab-safety">
+  <div id="safety-canvas">
+    <div id="safety-legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#2563eb"></div>Academic Research</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#d97706"></div>Civil Society &amp; NGOs</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#059669"></div>Policy, Governance &amp; Frameworks</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#7c3aed"></div>Benchmarks &amp; Evaluation</div>
+    </div>
+  </div>
+  <div id="safety-panel">
+    <div id="sp-body">
+      <div class="sp-empty">
+        <div class="sp-empty-icon">⬡</div>
+        <div class="sp-empty-title">AI Safety Landscape</div>
+        <div class="sp-empty-body">Click any node to explore how academic research, civil society and policy governance interconnect in child GenAI safety.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER — KORA spec: logo left · title center · date right -->
+<div id="hd">
+  <div class="hd-logo">
+    <text style="font-family:DM Serif Display,serif;font-size:22px;font-weight:bold;fill:#f7f4ef">KORA</text>
+
+  </div>
+  <div class="hd-center">
+    <h1>Generative AI <em>Child Outcomes</em></h1>
+  </div>
+  <div class="hd-date">KORA Framework · Herlin 2026 · N=1 802 études · Corpus KORA v8 · OpenAlex + PubMed (2022–2026)</div>
+</div>
+
+<div id="viz"></div>
+
+<div id="panel">
+  <div id="ph"></div>
+  <div id="pb">
+    <div class="p-empty">
+      <div class="p-empty-icon">◎</div>
+      <div class="p-empty-title">Select a sphere</div>
+      <div class="p-empty-body">Click on any of the eight developmental spheres to explore how LLMs affect that domain in children.</div>
+      <div class="p-empty-tag">KORA Framework · Herlin 2025</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SPHERES = [
+  {
+    id: "academic", strict:20, moderate:304, loose:57, cond:20, bidi:15, dominant:"positive",
+    mech_pos:363, mech_neg:211, mech_cond:0,
+    label: "Academic",
+    sublabel: "Domain knowledge, reading, mathematics, writing",
+    color: "#2563eb",
+    n_studies:381,
+    studies_pos:165,
+    studies_neg:17,
+    n_risks: 4,
+    n_benefits: 4,
+    rct_count: 17,
+    _all: {n:381,pos:165,neg:17,cond:20,bidi:15,strict:20,moderate:304,loose:57,pos_score:463.9,neg_score:50.1},
+    _ind: {n:317,pos:123,neg:15,cond:17,bidi:13,strict:20,moderate:256,loose:41,pos_score:366.9,neg_score:44.1},
+  mechanisms:[
+    {dir:'pos',label:'Personalized feedback loop',note:'Immediate AI correction → faster error detection → deeper encoding'},
+    {dir:'pos',label:'Difficulty scaffolding (ZPD)',note:'Adaptive level reduces overload → access to harder content becomes possible'},
+    {dir:'neg',label:'Cognitive offloading',note:'AI completes the task → no effortful encoding → poor retention without AI'},
+    {dir:'neg',label:'Assistance paradox',note:'Grades improve with AI, collapse without it → learning is illusory'}
+  ],
+    evidence_avg: 3.8,
+    top_risks: [
+      "GenAI use during problem-solving harms learning when it replaces effortful retrieval (Bastani et al., 2024 — RCT N=1,000+)",
+      "OLPC laptop RCT shows near-zero effects on reading/math after 2+ years of exposure (Cristia et al., 2017 — RCT N=1,342)",
+      "LLM hallucinations introduce inaccurate content in factual domains, especially science",
+      "AI dependency reduces knowledge transfer to novel contexts; surface fluency masks comprehension gaps"
+    ],
+    top_benefits: [
+      "AI tutoring yields ~1.5 SD learning gain vs. control in mathematics (Muralidharan et al., 2019 — RCT N=619)",
+      "Personalized LLM-guided reinforcement feedback significantly improves academic performance (Stanford SCALE, 2026 — RCT)",
+      "AI chatbots as mathematics mediators show significant learning gains (Building Bridges, 2024 — RCT)",
+      "Real-time formative feedback loops accelerate reading fluency and writing quality in K-12"
+    ],
+    studies_all:[] /* 60 studies — removed for export; add back from corpus_kora_v9 */
+  },
+  {
+    id: "neurocognitive", strict:8,  moderate:236, loose:25,
+    mech_pos:231, mech_neg:209, mech_cond:0, cond:7,  bidi:11, dominant:"positive",
+    label: "Neurocognitive",
+    sublabel: "Attention, memory, executive function, spatial reasoning",
+    color: "#7c3aed",
+    n_studies:269,
+    studies_pos:75,
+    studies_neg:34,
+    n_risks: 4,
+    n_benefits: 3,
+    rct_count: 7,
+    _all: {n:269,pos:75,neg:34,cond:7,bidi:11,strict:8,moderate:236,loose:25,pos_score:206.7,neg_score:95.3},
+    _ind: {n:262,pos:70,neg:33,cond:7,bidi:10,strict:8,moderate:230,loose:24,pos_score:194.6,neg_score:92.3},
+  mechanisms:[
+    {dir:'pos',label:'Adaptive attentional training',note:'Game-based AI conditioning → sustained attention gains (STARS trial, ADHD populations)'},
+    {dir:'neg',label:'Cognitive offloading → atrophy',note:'Underexercise of working memory and executive function circuits'},
+    {dir:'neg',label:'Rapid-pacing fragmentation',note:'Engagement-optimized AI content conditions rapid attention shifts → executive function disruption'}
+  ],
+    evidence_avg: 3.7,
+    top_risks: [
+      "Fast-paced passive screen content displaces attentional regulation and increases inattention risk (Lillard & Peterson, 2011 — RCT)",
+      "Excessive AI-mediated interaction reduces deep cognitive processing and working memory consolidation",
+      "Early childhood AI exposure may displace caregiver interaction critical for prefrontal cortex development",
+      "AI over-scaffolding prevents productive cognitive struggle needed for executive function growth"
+    ],
+    top_benefits: [
+      "FDA-cleared game-based AI (EndeavorRx) significantly improves sustained attention in ADHD (STARS Trial, 2020 — RCT N=348)",
+      "Minecraft Education cluster-RCT demonstrates significant spatial reasoning gains (2024 — RCT N>500)",
+      "AI Socratic dialogue strengthens reasoning and critical inference vs. passive instruction (RCT, 2024)"
+    ],
+    studies_all:[] /* 60 studies — removed for export; add back from corpus_kora_v9 */
+  },
+  {
+    id: "metacognitive", strict:0,  moderate:14,   loose:4,  cond:4,  bidi:5, dominant:"positive",
+    mech_pos:195, mech_neg:257, mech_cond:18,
+    label: "Metacognitive",
+    sublabel: "Self-regulation, critical thinking, source monitoring, planning",
+    color: "#0891b2",
+    n_studies:18,
+    studies_pos:7,
+    studies_neg:1,
+    n_risks: 4,
+    n_benefits: 3,
+    rct_count: 4,
+    _all: {n:18,pos:7,neg:1,cond:4,bidi:5,strict:0,moderate:14,loose:4,pos_score:15.2,neg_score:3.0},
+    _ind: {n:18,pos:7,neg:1,cond:4,bidi:5,strict:0,moderate:14,loose:4,pos_score:15.2,neg_score:3.0},
+  mechanisms:[
+    {dir:'cond',label:'Explicit SRL scaffolding',note:'AI that prompts reflection activates monitoring/planning → SRL gains (FLORA, Tutor CoPilot RCTs)'},
+    {dir:'neg',label:'Epistemic laziness',note:'AI generates → student accepts without evaluation → absent self-monitoring → no real SRL'},
+    {dir:'neg',label:'Illusory competence',note:'Performance high with AI, collapsed without → student overestimates own knowledge → no transfer'}
+  ],
+    evidence_avg: 3.5,
+    top_risks: [
+      "AI over-assistance collapses metacognitive demand: students bypass effortful monitoring and self-correction",
+      "Source monitoring failure: children treat AI as omniscient authority, reducing critical source evaluation",
+      "Calibration gap: AI confidence signals disrupt students' own accuracy monitoring and epistemic humility",
+      "Immediate AI answers reduce need for planning and strategy selection — core metacognitive skills"
+    ],
+    top_benefits: [
+      "Real-time classroom talk-time feedback improves student self-monitoring and engagement (RCT, 2024 — Stanford SCALE)",
+      "AI-powered formative coaching promotes structured reflection cycles and strategic self-regulation",
+      "LLM explanations provide externalized metacognitive models students can internalize over time"
+    ],
+    studies_all:[] /* 18 studies — removed for export; add back from corpus_kora_v9 */
+  },
+  {
+    id: "affective", strict:25, moderate:347, loose:45, cond:28, bidi:37, dominant:"negative",
+    mech_pos:78, mech_neg:407, mech_cond:28,
+    label: "Affective & Motivational",
+    sublabel: "Emotional regulation, motivation, engagement, wellbeing",
+    color: "#dc2626",
+    n_studies:417,
+    studies_pos:99,
+    studies_neg:121,
+    n_risks: 4,
+    n_benefits: 3,
+    rct_count: 19,
+    _all: {n:417,pos:99,neg:121,cond:28,bidi:37,strict:25,moderate:347,loose:45,pos_score:278.9,neg_score:354.0},
+    _ind: {n:405,pos:97,neg:120,cond:26,bidi:34,strict:25,moderate:338,loose:42,pos_score:272.9,neg_score:351.0},
+  mechanisms:[
+    {dir:'pos',label:'AI emotion coaching',note:'Structured chatbot support → regulation skill building (PACEE, FLORA RCTs)'},
+    {dir:'cond',label:'SDT autonomy pathways',note:'Intrinsic motivation supported only when AI design respects autonomy & competence (SDT framework)'},
+    {dir:'neg',label:'Algorithmic arousal dysregulation',note:'Engagement-maximising content triggers strong emotional responses → affective instability'},
+    {dir:'neg',label:'Social displacement',note:'AI interaction time displaces human contact → affective development gap'}
+  ],
+    evidence_avg: 3.2,
+    top_risks: [
+      "Heavy digital use (>3h/day) associated with emotional dysregulation and lower wellbeing (Przybylski & Weinstein, 2017 — N=120,115)",
+      "Social media AI algorithms linked to adolescent depressive symptoms (Tølbøll, 2025 — systematic review)",
+      "Parasocial AI relationships may substitute authentic emotional regulation skill development",
+      "AI that removes productive struggle reduces frustration tolerance — a key motivational resilience skill"
+    ],
+    top_benefits: [
+      "AI motivational scaffolding sustains task engagement and reduces math/writing anxiety in low-stakes contexts",
+      "Conversational AI agents increase intrinsic motivation via adaptive challenge-skill balance",
+      "AI emotion coaching apps (e.g., PACEE) support parental co-regulation of children's emotional learning (2025)"
+    ],
+    studies_all:[] /* 9 studies — removed for export; add back from corpus_kora_v9 */, '},
+      {label:'Generative AI Mental Health Chatbots as Therapeutic Tools: Systematic … (2025)',effect_direction:'conditional',evidence_strength:'5/5',causal_confidence:'systematic_review',note:'Background: In recent years, artificial intelligence (AI) has driven the rapid development'},
+      {label:'Social media: the root cause of rising youth self‐harm or a convenient… (2024)',effect_direction:'conditional',evidence_strength:'5/5',causal_confidence:'longitudinal',note:'Recent events have reignited debate over whether social media is the root cause of increas'},
+      {label:'Enhancing explainability and performance of the depression detection m… (2026)',effect_direction:'conditional',evidence_strength:'5/5',causal_confidence:'quasi_experimental',note:'Depression is a mental disorder that negatively affects many people worldwide. The traditi'},
+      {label:'Examining the Efficacy of Large Language Models for Mitigating Depress… (2025)',effect_direction:'negative',evidence_strength:'5/5',causal_confidence:'rct',note:'Secondary school students undergo significant psychological and physiological changes duri'},
+      {label:'Effect of an AI agent trained on a large language model (LLM) as an in… (2025)',effect_direction:'negative',evidence_strength:'5/5',causal_confidence:'rct',note:'BACKGROUND: Young adults face emotional problems in their daily lives. Considering that yo'},
+      {label:'Suicide Risk Assessments Through the Eyes of ChatGPT-3.5 Versus ChatGP… (2023)',effect_direction:'negative',evidence_strength:'5/5',causal_confidence:'longitudinal',note:'BACKGROUND: ChatGPT, a linguistic artificial intelligence (AI) model engineered by OpenAI,'},
+      {label:'School Closures During Social Lockdown and Mental Health, Health Behav… (2022)',effect_direction:'negative',evidence_strength:'5/5',causal_confidence:'quasi_experimental',note:'IMPORTANCE: School closures as part of broader social lockdown measures during the COVID-1'},
+      {label:'The effect of personalizing a psychotherapy conversational agent on th… (2024)',effect_direction:'negative',evidence_strength:'5/5',causal_confidence:'',note:'While 33.6% of college students suffer from mental health problems, only 24.6% of these st'},
+      {label:'Effectiveness of Online and Remote Interventions for Mental Health in … (2023)',effect_direction:'negative',evidence_strength:'5/5',causal_confidence:'',note:'BACKGROUND: The prevalence of mental illness increased in children, adolescents, and young'},
+      {label:'Comparing ChatGPT-4o and Gemini 1.5 Pro in Adolescent Psychiatric Emer… (2026)',effect_direction:'negative',evidence_strength:'5/5',causal_confidence:'longitudinal',note:'ObjectiveThis study aimed to evaluate the performance of large language models-ChatGPT-4o '},
+      {label:'Enhancing Korean adolescent suicide risk prediction with TabR: A gener… (2026)',effect_direction:'negative',evidence_strength:'5/5',causal_confidence:'longitudinal',note:'Adolescent suicide is a growing public health crisis, particularly in South Korea, which h'},
+      {label:'Application of Narrative and AI-Assisted Follow-Up After Voluntary Med… (2025)',effect_direction:'negative',evidence_strength:'5/5',causal_confidence:'',note:'Postoperative anxiety following voluntary medical male circumcision (VMMC) poses a signifi'},
+      {label:'Ensemble of transformers for depression emotion classification. (2026)',effect_direction:'negative',evidence_strength:'5/5',causal_confidence:'experimental',note:'People act on their emotions even in the most rational decision-making mechanisms in their'},
+      {label:'Usability of the “Be Yourself” IA-powered, chatbot-based website for t… (2026)',effect_direction:'mixed',evidence_strength:'5/5',causal_confidence:'longitudinal',note:'Objective: Objective. Analyze the usability, interaction patterns, and quality of conversa'},
+      {label:'Can AI-assisted therapy (PARO robot) be a treatment option for childre… (2024)',effect_direction:'mixed',evidence_strength:'5/5',causal_confidence:'experimental',note:'OBJECTIVES: The aim of the study was to assess changes that occur in the behavioural and e'},
+      {label:'Technology-mediated screening interviews for youth mental health: Cont… (2026)',effect_direction:'mixed',evidence_strength:'5/5',causal_confidence:'',note:'Early identification of mental health disorders in children and adolescents is essential f'},
+      {label:'Customizing ChatGPT to Help Computer Science Principles Students Learn… (2024)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'This paper explores leveraging conversational agents, specifically ChatGPT, to enhance the'},
+      {label:'Usage of AI Based ChatGPT, Students’ Self Efficacy and Engagement in M… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'cross_sectional',note:'This quantitative, descriptive-correlational study explores the relationship between the u'},
+      {label:'ChatGPT as a Learning Strategy: A Study on High School EFL Students’ E… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'mixed_methods',note:'This study investigates the role of ChatGPT as a learning strategy in enhancing engagement'},
+      {label:'Development of a Generative AI-based Chatbot for Enhancing Elementary … (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:''},
+      {label:'Teens, Tech, and Talk: Adolescents’ Use of and Emotional Reactions to … (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'= 1.69). The findings revealed that younger adolescents were more likely to use My AI and '},
+      {label:'Large language models and retrieval-augmented generation-based chatbot… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'&lt;span&gt;Access to fast and efficient information is crucial in today’s digital era, es'},
+      {label:'AI as a Healing Companion: Exploring Chatbot Design Strategies for in … (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'qualitative',note:'China Northeast Forestry University Emerging research indicates that chatbot-human interac'},
+      {label:'Enhancing Access to Health Information for Adolescent Girls in Banglad… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'The advancement of Large Language Models (LLMs) is leading to new possibilities in healthc'},
+      {label:'Enhancing Mental Wellness (Imarisha Afya ya Akili): Co-Designing an AI… (2026)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'<sec> <title>BACKGROUND</title> Mental health disorders are a leading cause of disability '},
+      {label:'Enhancing Mental Health and Academic Performance in Youth with ADHD an… (2024)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'This research explores the potential of conversational artificial intelligence (AI) as a t'},
+      {label:'“It’s not even close to being ready to replace anything”: the percepti… (2024)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'qualitative',note:'<sec> <title>BACKGROUND</title> Artificial intelligence (AI) technology has made significa'},
+      {label:'A New AI Framework to Support Social-Emotional Skills and Emotion Awar… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'',note:'This research highlights the importance of Emotion Aware Technologies (EAT) and their impl'},
+      {label:'Gamified Conversational AI Tool for Improving Social and Emotional Ski… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'An AI-powered conversational support tool has been proposed to enhance communication skill'},
+      {label:'The Impact of AI Usage on University Students’ Willingness for Autonom… (2024)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'',note:'As artificial intelligence (AI) technology becomes increasingly integrated into education,'},
+      {label:'AN ADAPTIVE MOBILE APPLICATION FOR CHILDREN WITH DISABILITIES: COMBINI… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'This paper addresses the persistent challenges children with autism and other disabilities'},
+      {label:'From Drawings to Awareness: Exploring Narrative Visualization and AI t… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'experimental',note:'Marine ecosystems are vital for human survival and the well-being of our planet. Educating'},
+      {label:'Enhancing Socio-Emotional Skills in Children with Autism through AI-Po… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'',note:'This narrative review explores the integration of Artificial Intelligence (AI) and Serious'},
+      {label:'TEACHER PERSPECTIVES ON AI-DRIVEN GAMIFICATION: IMPACT ON STUDENT MOTI… (2023)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'',note:'This study delves into the insights and experiences of teachers regarding the influence of'},
+      {label:'Review of Innovative Mental Health Support for Children and Young Peop… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'Abstract Purpose of Review Digital technologies, particularly Generative AI (GenAI), offer'},
+      {label:'AI Chatbots and Psychotherapy: A Match Made in Heaven? (2023)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'Dear Editor, Artificial Intelligence (AI) is revolutionizing psychotherapy by combating it'},
+      {label:'Explainable artificial intelligence systems for predicting mental heal… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'The recognition of mental disorder symptoms is crucial for timely management and reduction'},
+      {label:'Multimodal Emotion Recognition from Voice and Video Signals (2023)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'A promising area of research and development that can significantly increase the efficacy '},
+      {label:'Public Health Perspectives on AI-Driven Mental Health Support for Chil… (2026)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'unclear',note:'Artificial Intelligence (AI) is transforming mental health service delivery within public '},
+      {label:'Advances in large language models: ChatGPT expands the horizons of neu… (2023)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'systematic_review',note:'&lt;abstract&gt; &lt;p&gt;The field of neuroscience has been significantly impacted by the'},
+      {label:'Data Sheet 5_From promise to practice: insights into ChatGPT-4o use in… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'qualitative',note:'Background Despite growing interest, empirical studies on ChatGPT-4o’s clinical role in ch'},
+      {label:'Data Sheet 1_From promise to practice: insights into ChatGPT-4o use in… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'qualitative',note:'Background Despite growing interest, empirical studies on ChatGPT-4o’s clinical role in ch'},
+      {label:'Data Sheet 3_From promise to practice: insights into ChatGPT-4o use in… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'qualitative',note:'Background Despite growing interest, empirical studies on ChatGPT-4o’s clinical role in ch'},
+      {label:'Data Sheet 2_From promise to practice: insights into ChatGPT-4o use in… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'qualitative',note:'Background Despite growing interest, empirical studies on ChatGPT-4o’s clinical role in ch'},
+      {label:'Data Sheet 4_From promise to practice: insights into ChatGPT-4o use in… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'qualitative',note:'Background Despite growing interest, empirical studies on ChatGPT-4o’s clinical role in ch'},
+      {label:'The evolving field of digital mental health: current evidence and impl… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'',note:'The expanding domain of digital mental health is transitioning beyond traditional teleheal'},
+      {label:'Understanding and Fostering Mental Health and Well-Being among Univers… (2023)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'',note:'In recent years, there has been increasing recognition of mental health concerns in academ'},
+      {label:'Artificial intelligence in positive mental health: a narrative review (2024)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'systematic_review',note:'The paper reviews the entire spectrum of Artificial Intelligence (AI) in mental health and'},
+      {label:'“It happened to be the perfect thing”: experiences of generative AI ch… (2024)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'qualitative',note:'The global mental health crisis underscores the need for accessible, effective interventio'},
+      {label:'A scoping review of large language models for generative tasks in ment… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'systematic_review',note:'Large language models (LLMs) show promise in mental health care for handling human-like co'},
+      {label:'A Scoping Review of AI-Driven Digital Interventions in Mental Health C… (2025)',effect_direction:'positive',evidence_strength:'3/5',causal_confidence:'systematic_review',note:'BACKGROUND/OBJECTIVES: Artificial intelligence (AI)-enabled digital interventions are incr'}
+    ]
+  },
+  {
+    id: "psychosocial", strict:13, moderate:210, loose:36, cond:30, bidi:33,dominant:"bidirectional",
+    mech_pos:20, mech_neg:236, mech_cond:0,
+    label: "Psychosocial",
+    sublabel: "Social skills, identity, peer relationships, self-concept",
+    color: "#059669",
+    n_studies:259,
+    studies_pos:61,
+    studies_neg:50,
+    n_risks: 4,
+    n_benefits: 3,
+    rct_count: 12,
+    _all: {n:259,pos:61,neg:50,cond:30,bidi:33,strict:13,moderate:210,loose:36,pos_score:187.2,neg_score:129.7},
+    _ind: {n:249,pos:60,neg:47,cond:25,bidi:32,strict:13,moderate:208,loose:28,pos_score:184.2,neg_score:129.4},
+  mechanisms:[
+    {dir:'pos',label:'Empathic practice',note:'Low-stakes AI roleplay → social skill rehearsal → transfer to real interactions (RCT 2026)'},
+    {dir:'neg',label:'Relational displacement',note:'AI companion replaces human contact for lonely adolescents → social atrophy'},
+    {dir:'neg',label:'Parasocial attachment',note:'One-sided emotional bond → distorted expectations of human relationships (always-available, never-vulnerable AI)'},
+    {dir:'neg',label:'Synthetic victimisation',note:'AI-generated CSAM/NCII → acute psychosocial trauma (UNICEF, 11 countries)'}
+  ],
+    evidence_avg: 3.1,
+    top_risks: [
+      "Social media AI algorithms amplify peer social comparison, increasing social anxiety risk (Beyens et al., 2021 — longitudinal)",
+      "AI companion use displaces peer interaction quality in early childhood — critical sensitive period for social development",
+      "Vulnerability-amplification: at-risk and anxious children are most negatively affected by social AI features",
+      "Identity development complexity when children form attachments to AI agents or AI-mediated personas"
+    ],
+    top_benefits: [
+      "Cooperative AI design promotes prosocial behavior via structured turn-taking and perspective-taking (Mares & Woodard meta-analysis)",
+      "AI-assisted project-based learning (PBL) enhances collaborative skills and peer interdependence (RCT, 2021)",
+      "AI social skills training shows measurable benefits for children with ASD (NAO Robot RCT, 2024)"
+    ],
+    studies_all:[] /* 60 studies — removed for export; add back from corpus_kora_v9 */
+  },
+  {
+    id: "creative", strict:2,  moderate:98,  loose:20, cond:3,  bidi:4, dominant:"positive",
+    mech_pos:86, mech_neg:45, mech_cond:0,
+    label: "Creative",
+    sublabel: "Divergent thinking, artistic expression, imaginative play",
+    color: "#d97706",
+    n_studies:120,
+    studies_pos:49,
+    studies_neg:16,
+    n_risks: 3,
+    n_benefits: 3,
+    rct_count: 1,
+    _all: {n:120,pos:49,neg:16,cond:3,bidi:4,strict:2,moderate:98,loose:20,pos_score:130.7,neg_score:45.1},
+    _ind: {n:112,pos:44,neg:15,cond:3,bidi:3,strict:2,moderate:91,loose:19,pos_score:118.6,neg_score:42.1},
+  mechanisms:[
+    {dir:'pos',label:'Generative stimulus',note:'AI first proposal as muse → wider ideation starting point when user iterates beyond it'},
+    {dir:'pos',label:'Creative scaffolding',note:'AI support builds skill in music, narrative, maths storytelling (MusicScaffold, Mentigo, Mathemyths RCTs)'},
+    {dir:'neg',label:'Design fixation / anchoring',note:'AI-generated proposal anchors student → reduced range of original exploration (AUT, RAT evidence)'},
+    {dir:'neg',label:'Cultural homogenisation',note:'Billions of children using same models → convergent creative outputs → diversity loss (systemic)'}
+  ],
+    evidence_avg: 3.0,
+    top_risks: [
+      "GenAI use in creative tasks may reduce divergent thinking through convergence toward modal outputs",
+      "Over-reliance on AI generation reduces creative self-efficacy and originality in repeated tasks",
+      "AI-produced outputs normalized as aesthetic reference standard may constrain children's creative voice development"
+    ],
+    top_benefits: [
+      "AI scaffolding enhances musical creativity without replacing student originality (MusicScaffold, 2025 — RCT)",
+      "Generative AI as creative co-pilot expands idea exploration, fluency, and creative risk-taking",
+      "AI storytelling partners increase narrative elaboration and imaginative complexity in early childhood"
+    ],
+    studies_all:[] /* 60 studies — removed for export; add back from corpus_kora_v9 */
+  },
+  {
+    id: "sensorimotor", strict:1,  moderate:65,  loose:1,  cond:2,  bidi:0, dominant:"unclear",
+    mech_pos:0, mech_neg:326, mech_cond:0,
+    label: "Sensorimotor",
+    sublabel: "Motor development, perceptual processing, embodied learning",
+    color: "#0284c7",
+    n_studies:67,
+    studies_pos:25,
+    studies_neg:8,
+    n_risks: 4,
+    n_benefits: 2,
+    rct_count: 1,
+    _all: {n:67,pos:25,neg:8,cond:2,bidi:0,strict:1,moderate:65,loose:1,pos_score:75.0,neg_score:24.0},
+    _ind: {n:67,pos:25,neg:8,cond:2,bidi:0,strict:1,moderate:65,loose:1,pos_score:75.0,neg_score:24.0},
+  mechanisms:[
+    {dir:'pos',label:'Visuo-spatial scaffolding',note:'AI tools improve spatial processing in structured game contexts (MindScratch, limited evidence)'},
+    {dir:'neg',label:'Activity displacement',note:'Screen/AI time displaces physical movement → sedentary behaviour + sleep disruption'},
+    {dir:'neg',label:'Body image violation',note:'Deepfakes + beauty filters → unattainable body standards → identity trauma'}
+  ],
+    evidence_avg: 2.5,
+    top_risks: [
+      "Screen-based AI displaces active sensorimotor play critical for gross and fine motor milestone development",
+      "Passive tablet interaction replaces manipulative object play in toddlers — key for haptic and proprioceptive development",
+      "Heavy screen exposure associated with delayed gross motor milestones (meta-analysis, 2022 — N>3,000)",
+      "⚠ EVIDENCE GAP: No published RCT examining GenAI effects on motor development in children under 12"
+    ],
+    top_benefits: [
+      "AI visual scaffolding in serious games supports fine motor coordination and visual-motor integration (QE, 2026)",
+      "AR/AI-augmented play environments show early promise for spatial-motor skill integration in school settings"
+    ],
+    studies_all:[] /* 60 studies — removed for export; add back from corpus_kora_v9 */
+  }  ,
+  {
+    id: "environmental", strict:2,  moderate:71,  loose:18, cond:8,  bidi:3, dominant:"positive",
+    mech_pos:45, mech_neg:130, mech_cond:0,
+    label: "Environmental",
+    sublabel: "Family context, digital divide, equity, home screen ecology",
+    color: "#16a34a",
+    n_studies:91,
+    studies_pos:27,
+    studies_neg:10,
+    n_risks: 3,
+    n_benefits: 3,
+    rct_count: 2,
+    _all: {n:91,pos:27,neg:10,cond:8,bidi:3,strict:2,moderate:71,loose:18,pos_score:75.2,neg_score:26.2},
+    _ind: {n:84,pos:25,neg:9,cond:5,bidi:3,strict:2,moderate:69,loose:13,pos_score:72.1,neg_score:26.1},
+  mechanisms:[
+    {dir:'pos',label:'Critical AI literacy',note:'Explicit instruction in AI-integrated curricula → media discernment → epistemic agency'},
+    {dir:'neg',label:'Filter bubble formation',note:'Algorithmic curation → worldview narrowing → radicalisation risk'},
+    {dir:'neg',label:'Epistemic delegation',note:'Reliance on AI summaries → atrophy of independent information evaluation skills'}
+  ],
+    evidence_avg: 3.1,
+    top_risks: [
+      "Digital divide amplifies educational inequity: low-SES children have more AI exposure but less parental mediation and guidance",
+      "Unsupervised or unmediated AI access in under-resourced home environments correlates with poorer developmental outcomes",
+      "'Technoference' (parental digital displacement) during AI interactions reduces quality of child-caregiver co-regulation"
+    ],
+    top_benefits: [
+      "Active parental mediation and co-use of AI significantly buffers negative developmental effects across multiple domains",
+      "School-based AI programs in underserved communities can partially bridge the digital opportunity gap in learning outcomes",
+      "AI tools adapted for multilingual and low-literacy families extend equitable access to educational support resources"
+    ],
+    studies_all:[] /* 60 studies — removed for export; add back from corpus_kora_v9 */
+  }
+];
+
+const W = window.innerWidth - 380;
+const H = window.innerHeight - 60;
+const cx = W / 2, cy = H / 2;
+
+// Extract Environmental sphere — drawn as outer ring, not as a heptagon node
+// Init weighted scores from _all data
+SPHERES.forEach(s => {
+  s.pos_score = s._all.pos_score || 0;
+  s.neg_score = s._all.neg_score || 0;
+});
+
+const ENV_SPHERE = SPHERES.splice(SPHERES.findIndex(s => s.id === 'environmental'), 1)[0];
+
+const N = 7;   // now a heptagon
+const R_ORB   = Math.min(W, H) * 0.285;   // slightly tighter to make room for env ring
+const R_ENV_I = Math.min(W, H) * 0.435;   // env ring inner radius
+const R_ENV_O = Math.min(W, H) * 0.462;   // env ring outer radius
+
+SPHERES.forEach((s, i) => {
+  const ang = -Math.PI / 2 + (2 * Math.PI * i) / N;
+  s.angle = ang;
+  s.px = cx + R_ORB * Math.cos(ang);
+  s.py = cy + R_ORB * Math.sin(ang);
+});
+
+const maxStudies = d3.max(SPHERES, d => d.n_studies);
+const maxMechs   = d3.max(SPHERES, d => d.n_risks + d.n_benefits);
+
+const svg = d3.select('#viz').append('svg').attr('width', W).attr('height', H);
+// Cream paper background
+svg.append('rect').attr('width', W).attr('height', H).attr('fill', '#f7f4ef');
+
+const g = svg.append('g');
+
+// ── Heptagon spider grid (KORA rule lines) ──
+[0.25, 0.5, 0.75, 1.0].forEach(frac => {
+  const pts = SPHERES.map(s => [cx + R_ORB * frac * Math.cos(s.angle), cy + R_ORB * frac * Math.sin(s.angle)]);
+  g.append('polygon')
+    .attr('points', pts.map(p => p.join(',')).join(' '))
+    .attr('fill', 'none')
+    .attr('stroke', frac === 1.0 ? '#c8c0b0' : '#e0d9cf')
+    .attr('stroke-width', frac === 1.0 ? 1.2 : 0.8);
+});
+
+// Spoke lines
+SPHERES.forEach(s => {
+  g.append('line')
+    .attr('x1', cx).attr('y1', cy)
+    .attr('x2', s.px).attr('y2', s.py)
+    .attr('stroke', '#d8d0c6').attr('stroke-width', 0.8);
+});
+
+// ── Evidence quality spider overlay (Przybylski tiers) ──
+// Outer polygon = strict+moderate quality studies
+const qualPoly = SPHERES.map(s => {
+  const f = Math.max(0.06, (s.strict + s.moderate) / s.n_studies) * 0.92;
+  return [cx + R_ORB * f * Math.cos(s.angle), cy + R_ORB * f * Math.sin(s.angle)];
+});
+g.append('polygon').attr('class','qual-poly')
+  .attr('points', qualPoly.map(p => p.join(',')).join(' '))
+  .attr('fill', 'rgba(245,183,0,0.05)')
+  .attr('stroke', 'rgba(245,183,0,0.28)')
+  .attr('stroke-width', 1.2).attr('stroke-linejoin', 'round');
+
+// Inner polygon = strict-only studies
+const strictPoly = SPHERES.map(s => {
+  const f = Math.max(0.04, s.strict / s.n_studies * 5);
+  return [cx + R_ORB * f * Math.cos(s.angle), cy + R_ORB * f * Math.sin(s.angle)];
+});
+g.append('polygon').attr('class','strict-poly')
+  .attr('points', strictPoly.map(p => p.join(',')).join(' '))
+  .attr('fill', 'rgba(15,14,12,0.04)')
+  .attr('stroke', 'rgba(15,14,12,0.18)')
+  .attr('stroke-width', 1).attr('stroke-linejoin', 'round');
+
+// ── Environmental sphere — outer macrosystem ring ──────────────────────────
+// Drawn as a full 360° ring enclosing the 7 inner spheres.
+// Arc segments encode quality tier (strict / moderate / loose) × direction color.
+(function drawEnvRing() {
+  const ev = ENV_SPHERE;
+  const envArc = d3.arc().innerRadius(R_ENV_I).outerRadius(R_ENV_O).cornerRadius(2);
+  const envG = g.append('g').attr('class','env-ring-g')
+    .attr('transform', `translate(${cx},${cy})`)
+    .style('cursor','pointer')
+    .on('click', () => showPanel(ENV_SPHERE));
+
+  // Arc: weighted score (pos_score vs neg_score)
+  const evArcTot = (ev.pos_score + ev.neg_score) || 0;
+  if (evArcTot > 0) {
+    const evPA = (ev.pos_score / evArcTot) * Math.PI * 2;
+    const evNA = (ev.neg_score / evArcTot) * Math.PI * 2;
+    if (evPA > 0.01)
+      envG.append('path').attr('class','env-arc env-arc-pos')
+        .attr('d', envArc({ startAngle: -Math.PI/2, endAngle: -Math.PI/2 + evPA }))
+        .attr('fill', 'rgba(22,101,52,0.88)');
+    if (evNA > 0.01)
+      envG.append('path').attr('class','env-arc env-arc-neg')
+        .attr('d', envArc({ startAngle: -Math.PI/2 + evPA, endAngle: -Math.PI/2 + evPA + evNA }))
+        .attr('fill', 'rgba(153,27,27,0.88)');
+  }
+
+  // Invisible full-circle hit target for easy clicking
+  envG.append('path')
+    .attr('d', d3.arc().innerRadius(R_ENV_I - 4).outerRadius(R_ENV_O + 4)
+      ({ startAngle: 0, endAngle: Math.PI * 2 }))
+    .attr('fill', 'transparent');
+
+  // Dashed outer border ring
+  g.append('circle').attr('class','env-ring-border')
+    .attr('cx', cx).attr('cy', cy)
+    .attr('r', R_ENV_O + 6)
+    .attr('fill', 'none')
+    .attr('stroke', '#c8c0b0').attr('stroke-width', 0.8)
+    .attr('stroke-dasharray', '4 4');
+
+  // Label at top — "Environmental · Digital Context"
+  const labelR = R_ENV_O + 22;
+  g.append('text').attr('class','env-ring-label')
+    .attr('x', cx).attr('y', cy - labelR)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', "'DM Mono',monospace").attr('font-size', 10)
+    .attr('letter-spacing', '0.12em').attr('text-transform', 'uppercase')
+    .attr('fill', '#78716c')
+    .text('ENVIRONMENTAL · DIGITAL CONTEXT');
+  // n= study count
+  g.append('text').attr('class','env-ring-label-n')
+    .attr('x', cx).attr('y', cy - labelR + 14)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', "'DM Mono',monospace").attr('font-size', 8)
+    .attr('fill', '#a89880')
+    .text(`n=${ev.n_studies}`);
+
+  // ↑% badge at right side of ring — raw study direction
+  const posPct = Math.round((ev.studies_pos || 0) / (ev.n_studies || 1) * 100);
+  const negPct = Math.round((ev.studies_neg || 0) / (ev.n_studies || 1) * 100);
+  const badgeX = cx + R_ENV_O + 32;
+  const badgeCol = ev.dominant === 'positive' ? '#166534'
+                 : ev.dominant === 'negative' ? '#991b1b' : '#78716c';
+  g.append('text').attr('class','env-ring-badge')
+    .attr('x', badgeX).attr('y', cy - 4)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', "'DM Mono',monospace").attr('font-size', 10)
+    .attr('font-weight', '600').attr('fill', '#166534')
+    .text(`↑${posPct}%`);
+  g.append('text').attr('class','env-ring-badge-neg')
+    .attr('x', badgeX).attr('y', cy + 10)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', "'DM Mono',monospace").attr('font-size', 10)
+    .attr('font-weight', '600').attr('fill', '#991b1b')
+    .text(`↓${negPct}%`);
+
+  // Quality % label at left side
+  const qCov = Math.round((ev.strict + ev.moderate) / ev.n_studies * 100);
+  const qCol = qCov >= 75 ? '#1a5c32' : qCov >= 50 ? '#78716c' : '#9a3412';
+  g.append('text').attr('class','env-ring-qbadge')
+    .attr('x', cx - R_ENV_O - 32).attr('y', cy + 4)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', "'DM Mono',monospace").attr('font-size', 10)
+    .attr('fill', qCol)
+    .text(`Q${qCov}%`);
+})();
+
+
+// ── Study dots ring ──
+SPHERES.forEach(s => {
+  const dotCount = Math.min(s.n_studies, 16);
+  const dotR = 50;
+  for (let j = 0; j < dotCount; j++) {
+    const a = s.angle + (2 * Math.PI * j / dotCount);
+    const st = s.studies_all[j % (s.studies_all.length || 1)];
+    // Color by evidence strength tier
+    const evStr = st ? (st.evidence_strength || '') : '';
+    const evNum = evStr ? parseFloat(evStr.split('/')[0]) : 0;
+    const col = evNum >= 4.5 ? '#0f0e0c'
+              : evNum >= 3.5 ? (st.effect_direction==='positive' ? '#166534' : st.effect_direction==='negative' ? '#991b1b' : '#78716c')
+              : evNum >= 2.5 ? '#a0a09a'
+              : '#d1cdc5';
+    g.append('circle')
+      .attr('cx', s.px + dotR * Math.cos(a))
+      .attr('cy', s.py + dotR * Math.sin(a))
+      .attr('r', 2.2).attr('fill', col).attr('opacity', 0.55);
+  }
+});
+
+// ── Sphere nodes ──
+
+// Arc tier color: direction × 3 quality levels
+function arcTierColor(dominant, tier) {
+  if (dominant === 'positive') {
+    return tier === 'strict'   ? 'rgba(21,87,36,0.85)'    // dark green
+         : tier === 'moderate' ? 'rgba(46,125,50,0.48)'   // medium green
+         :                       'rgba(102,187,106,0.28)'; // light green
+  } else if (dominant === 'negative') {
+    return tier === 'strict'   ? 'rgba(127,0,0,0.85)'     // dark red
+         : tier === 'moderate' ? 'rgba(198,40,40,0.45)'   // medium red
+         :                       'rgba(229,115,115,0.28)'; // light red
+  } else {
+    return tier === 'strict'   ? 'rgba(50,42,34,0.72)'    // dark grey-brown
+         : tier === 'moderate' ? 'rgba(90,82,72,0.40)'    // medium grey
+         :                       'rgba(160,152,144,0.24)'; // light grey
+  }
+}
+// Per-sphere node radius: sqrt-scaled by n_studies (range 20–52px)
+const _nodeRScale = d3.scaleSqrt()
+  .domain([0, d3.max(SPHERES, d => d.n_studies)])
+  .range([0, 52]);
+SPHERES.forEach(s => { s.nodeR = Math.max(20, _nodeRScale(s.n_studies)); });
+
+const nodeG = g.selectAll('.sph').data(SPHERES).join('g')
+  .attr('class', 'sph').attr('id', d => 'sph-g-'+d.id)
+  .attr('transform', d => `translate(${d.px},${d.py})`)
+  .style('cursor', 'pointer');
+
+// ── Mechanism band — causal mechanism balance per sphere ──
+// Thin ring just outside the node circle: green CW = positive mechanisms, red CCW = negative.
+// Score = strict×5 + moderate×3 + loose×0.1 aggregated across all mechanisms targeting this sphere.
+function drawMechBand(el, d) {
+  const r1 = d.nodeR + 1, r2 = d.nodeR + 5;
+  const ma = d3.arc().innerRadius(r1).outerRadius(r2).cornerRadius(0.5);
+  const tot = (d.mech_pos || 0) + (d.mech_neg || 0) + (d.mech_cond || 0) || 1;
+  // Gray background (full ring)
+  el.append('path').attr('class','mech-band mech-band-bg')
+    .attr('d', ma({ startAngle: 0, endAngle: Math.PI * 2 }))
+    .attr('fill', 'rgba(200,192,176,0.45)').attr('stroke', 'none');
+  // Positive mechanisms: green, CW from top
+  const pA = (d.mech_pos || 0) / tot * Math.PI * 2;
+  if (pA > 0.01) el.append('path').attr('class','mech-band mech-band-pos')
+    .attr('d', ma({ startAngle: -Math.PI/2, endAngle: -Math.PI/2 + pA }))
+    .attr('fill', 'rgba(22,101,52,0.92)').attr('stroke', 'none');
+  // Negative mechanisms: red, CCW from top
+  const nA = (d.mech_neg || 0) / tot * Math.PI * 2;
+  if (nA > 0.01) el.append('path').attr('class','mech-band mech-band-neg')
+    .attr('d', ma({ startAngle: -Math.PI/2, endAngle: -Math.PI/2 - nA }))
+    .attr('fill', 'rgba(153,27,27,0.92)').attr('stroke', 'none');
+  // Conditional mechanisms: orange, from bottom CW
+  const cA = (d.mech_cond || 0) / tot * Math.PI * 2;
+  if (cA > 0.01) el.append('path').attr('class','mech-band mech-band-cond')
+    .attr('d', ma({ startAngle: Math.PI/2, endAngle: Math.PI/2 + cA }))
+    .attr('fill', 'rgba(180,83,9,0.88)').attr('stroke', 'none');
+}
+nodeG.each(function(d) { drawMechBand(d3.select(this), d); });
+
+// Direction fill + stroke helpers — encode empirical pos/neg balance visually
+function dirFill(d) {
+  const pos = (d.studies_pos || 0) / (d.n_studies || 1);
+  const neg = (d.studies_neg || 0) / (d.n_studies || 1);
+  const sig = pos - neg;
+  if (sig > 0.20) return 'rgba(187,247,208,0.75)';  // strong positive → vivid green
+  if (sig > 0.06) return 'rgba(220,252,231,0.65)';  // mild positive  → light green
+  if (sig < -0.12) return 'rgba(254,202,202,0.75)'; // strong negative → vivid red
+  if (sig < -0.02) return 'rgba(254,226,226,0.62)'; // mild negative   → light red
+  return 'rgba(255,251,235,0.55)';                  // neutral/mixed   → cream
+}
+function dirStroke(d) {
+  const pos = (d.studies_pos || 0) / (d.n_studies || 1);
+  const neg = (d.studies_neg || 0) / (d.n_studies || 1);
+  const sig = pos - neg;
+  if (sig > 0.06)  return '#166534';  // green
+  if (sig < -0.02) return '#991b1b';  // red
+  return '#78716c';                   // neutral
+}
+
+// Main circle — fill = empirical direction tint, stroke = direction color
+nodeG.append('circle').attr('class', 'node-circle').attr('r', d => d.nodeR)
+  .attr('fill', d => dirFill(d))
+  .attr('stroke', d => dirStroke(d)).attr('stroke-width', 2.5).attr('stroke-opacity', 0.7)
+  .attr('filter', 'drop-shadow(0 2px 6px rgba(15,14,12,.10))');
+
+// Quality coverage ring — radius encodes % of quality-graded studies (strict+moderate / total)
+// This normalises by evidence quality rather than raw study count
+nodeG.append('circle').attr('class','sph-inner-ring')
+  .attr('r', d => {
+    const qPct = (d.strict + d.moderate) / (d.n_studies || 1);
+    return 6 + qPct * 20; // 6px min → 26px max at 100% quality
+  })
+  .attr('fill', 'none')
+  .attr('stroke', d => d.color).attr('stroke-width', 1).attr('stroke-opacity', 0.20);
+
+// Label text — font sizes scale with nodeR
+nodeG.each(function(s) {
+  const el = d3.select(this);
+  const words = s.label.split(/[\s-]/);
+  // Scale label font to node size: min 9px (small nodes), max 14px (large nodes)
+  const lfs  = Math.min(14, Math.max(9, Math.round(s.nodeR * 0.27)));
+  const lineH = lfs + 3;
+  words.forEach((w, i) => {
+    el.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', (i - (words.length - 1) / 2) * lineH + 3)
+      .attr('font-family', "'DM Serif Display',serif")
+      .attr('font-size', lfs)
+      .attr('fill', '#0f0e0c')
+      .text(w);
+  });
+
+  // Q% quality coverage — below node
+  const qCov = Math.round((s.strict + s.moderate) / (s.n_studies || 1) * 100);
+  const nLblCol = qCov >= 75 ? '#1a5c32' : qCov >= 50 ? '#78716c' : '#9a3412';
+  const statFs = Math.min(10, Math.max(8, Math.round(s.nodeR * 0.20)));
+  el.append('text').attr('class','sph-n-lbl')
+    .attr('text-anchor', 'middle').attr('dy', s.nodeR + statFs + 3)
+    .attr('font-family', "'DM Mono',monospace").attr('font-size', statFs)
+    .attr('fill', nLblCol).text(`Q${qCov}%`);
+
+  // n= study count — one line below Q%
+  el.append('text').attr('class','sph-n-count')
+    .attr('text-anchor', 'middle').attr('dy', s.nodeR + statFs * 2 + 5)
+    .attr('font-family', "'DM Mono',monospace").attr('font-size', statFs - 1)
+    .attr('fill', '#a89880').text(`n=${s.n_studies}`);
+
+  // Direction badges above node: ↑X% pos / ↓Y% neg
+  const badgeFs = Math.min(10, Math.max(8, Math.round(s.nodeR * 0.20)));
+  const yCnt = -(s.nodeR + badgeFs + 2);
+  const pPctBadge = Math.round((s.studies_pos || 0) / (s.n_studies || 1) * 100);
+  const nPctBadge = Math.round((s.studies_neg || 0) / (s.n_studies || 1) * 100);
+  const bOff = Math.max(16, Math.round(s.nodeR * 0.38));
+  el.append('text').attr('class','sph-q-lbl sph-q-lbl-pos').attr('x', -bOff).attr('y', yCnt)
+    .attr('text-anchor', 'middle').attr('font-family', "'DM Mono',monospace").attr('font-size', badgeFs)
+    .attr('font-weight', '600').attr('fill', '#166534').text(`↑${pPctBadge}%`);
+  el.append('text').attr('class','sph-q-lbl sph-q-lbl-neg').attr('x', bOff).attr('y', yCnt)
+    .attr('text-anchor', 'middle').attr('font-family', "'DM Mono',monospace").attr('font-size', badgeFs)
+    .attr('font-weight', '600').attr('fill', '#991b1b').text(`↓${nPctBadge}%`);
+});
+
+// ── Center node ──
+const cg = g.append('g').attr('transform', `translate(${cx},${cy})`);
+cg.append('circle').attr('r', 36)
+  .attr('fill', '#ffffff').attr('stroke', '#c8c0b0').attr('stroke-width', 1.2)
+  .attr('filter', 'drop-shadow(0 1px 6px rgba(15,14,12,.1))');
+cg.append('text').attr('text-anchor', 'middle').attr('dy', -9)
+  .attr('font-family', "'DM Serif Display',serif").attr('font-size', 11).attr('fill', '#F5B700')
+  .text('LLMs');
+cg.append('text').attr('text-anchor', 'middle').attr('dy', 4)
+  .attr('font-family', "'DM Sans',sans-serif").attr('font-size', 8).attr('fill', '#8b8070').text('&');
+cg.append('text').attr('text-anchor', 'middle').attr('dy', 16)
+  .attr('font-family', "'DM Serif Display',serif").attr('font-size', 10).attr('fill', '#3a3830')
+  .text('Children');
+
+// ── Legend bottom-left ──
+const legData = [
+  {col:'rgba(22,101,52,0.88)',  shape:'rect', label:'Positive evidence (strict×5 + mod×3 + loose×0.1)'},
+  {col:'rgba(153,27,27,0.88)', shape:'rect', label:'Negative evidence (strict×5 + mod×3 + loose×0.1)'},
+  {col:'rgba(245,183,0,0.4)',  shape:'line', label:'Quality coverage (strict+moderate / total)'},
+];
+legData.forEach((l, i) => {
+  const yp = H - 20 - (legData.length - 1 - i) * 16;
+  const lg = svg.append('g').attr('transform', `translate(18,${yp})`);
+  if (l.shape === 'rect') {
+    lg.append('rect').attr('x',-4).attr('y',-4).attr('width',8).attr('height',8).attr('rx',1)
+      .attr('fill', l.col).attr('stroke','rgba(15,14,12,0.15)').attr('stroke-width',0.5);
+  } else {
+    lg.append('line').attr('x1',-5).attr('x2',5).attr('stroke',l.col).attr('stroke-width',1.5).attr('stroke-dasharray','3 2');
+  }
+  lg.append('text').attr('x', 10).attr('dominant-baseline', 'middle')
+    .attr('font-family', "'DM Mono',monospace").attr('font-size', 8).attr('letter-spacing', '.04em')
+    .attr('fill', '#8b8070').text(l.label);
+});
+
+// ── Interactions ──
+nodeG.on('mouseover', function() {
+  if (!d3.select(this).classed('active'))
+    d3.select(this).select('.node-circle')
+      .transition().duration(120)
+      .attr('stroke-opacity', .75).attr('stroke-width', 2.5);
+}).on('mouseout', function() {
+  if (!d3.select(this).classed('active'))
+    d3.select(this).select('.node-circle')
+      .transition().duration(120)
+      .attr('stroke-opacity', .35).attr('stroke-width', 2);
+}).on('click', function(e, d) {
+  d3.selectAll('.sph').classed('active', false).select('.node-circle')
+    .transition().duration(120).attr('stroke-opacity', .35).attr('stroke-width', 2);
+  d3.select(this).classed('active', true).select('.node-circle')
+    .transition().duration(120).attr('stroke-opacity', 1).attr('stroke-width', 3);
+  showPanel(d);
+});
+
+function dirCol(d) { return d==='positive'?'#2563eb':d==='negative'?'#dc2626':'#8b8070' }
+function dirLbl(d) { return d==='positive'?'↑ Positive':d==='negative'?'↓ Negative':'~ Mixed / n.c.' }
+
+// ── Ring legend (bottom-left of viz) ──────────────────────────────────────
+(function drawRingLegend() {
+  const lx = 18, ly = H - 106;
+  const lg = svg.append('g').attr('transform', `translate(${lx},${ly})`).attr('pointer-events','none');
+  // Background box
+  lg.append('rect').attr('x',0).attr('y',0).attr('width',194).attr('height',92)
+    .attr('rx',4).attr('fill','rgba(247,244,239,.93)').attr('stroke','#c8c0b0').attr('stroke-width',.8);
+  // Title
+  lg.append('text').attr('x',10).attr('y',14)
+    .attr('font-family','DM Mono,monospace').attr('font-size',7).attr('letter-spacing','.12em')
+    .attr('text-transform','uppercase').attr('fill','#8b8070').text('HOW TO READ THE NODES');
+  // Node size row
+  const r1 = lg.append('g').attr('transform','translate(10,26)');
+  const r1svg = r1.append('svg').attr('width',20).attr('height',20).attr('y',-8);
+  r1svg.append('circle').attr('cx',10).attr('cy',10).attr('r',8)
+    .attr('fill','rgba(255,255,255,0.9)').attr('stroke','rgba(120,113,108,0.45)').attr('stroke-width',1);
+  r1svg.append('circle').attr('cx',10).attr('cy',10).attr('r',4.5)
+    .attr('fill','none').attr('stroke','rgba(120,113,108,0.25)').attr('stroke-width',0.8).attr('stroke-dasharray','2 2');
+  r1.append('text').attr('x',24).attr('y',4)
+    .attr('font-family','DM Mono,monospace').attr('font-size',8.5).attr('fill','#3a3830')
+    .text('Node size — study count');
+  r1.append('text').attr('x',24).attr('y',14)
+    .attr('font-family','DM Mono,monospace').attr('font-size',7.5).attr('fill','#8b8070')
+    .text('√ scale · 20px min → 52px max');
+  // Inner band row
+  const r2 = lg.append('g').attr('transform','translate(10,56)');
+  const iArc = d3.arc().innerRadius(5).outerRadius(8).cornerRadius(1);
+  const r2svg = r2.append('svg').attr('width',20).attr('height',20).attr('y',-8);
+  r2svg.append('path').attr('transform','translate(10,10)')
+    .attr('d', iArc({startAngle:-Math.PI/2, endAngle:-Math.PI/2 + Math.PI*0.5})).attr('fill','rgba(22,101,52,0.92)');
+  r2svg.append('path').attr('transform','translate(10,10)')
+    .attr('d', iArc({startAngle:-Math.PI/2, endAngle:-Math.PI/2 - Math.PI*0.8})).attr('fill','rgba(153,27,27,0.92)');
+  r2svg.append('path').attr('transform','translate(10,10)')
+    .attr('d', iArc({startAngle:-Math.PI/2 + Math.PI*0.5, endAngle:-Math.PI/2 - Math.PI*0.8 + Math.PI*2})).attr('fill','rgba(200,192,176,0.45)');
+  r2.append('text').attr('x',24).attr('y',4)
+    .attr('font-family','DM Mono,monospace').attr('font-size',8.5).attr('fill','#3a3830')
+    .text('Inner — Causal mechanisms');
+  r2.append('text').attr('x',24).attr('y',14)
+    .attr('font-family','DM Mono,monospace').attr('font-size',7.5).attr('fill','#8b8070')
+    .text('Evidence weight of pos/neg pathways');
+  // Color key row
+  const ck = lg.append('g').attr('transform','translate(10,80)');
+  [[0,'rgba(22,101,52,0.85)','↑ Positive'],[60,'rgba(153,27,27,0.85)','↓ Negative'],[120,'rgba(180,83,9,0.80)','~ Conditional']].forEach(([x,col,lbl]) => {
+    ck.append('rect').attr('x',x).attr('y',-4).attr('width',6).attr('height',6).attr('rx',1).attr('fill',col);
+    ck.append('text').attr('x',x+9).attr('y',3).attr('font-family','DM Mono,monospace').attr('font-size',7).attr('fill','#8b8070').text(lbl);
+  });
+})();
+
+
+// ═══════════════════════════════════════════════════════
+//  GLOBAL VIEW MODE  ('all' = full corpus, 'ind' = independent only)
+// ═══════════════════════════════════════════════════════
+let VIEW_MODE = 'all';
+
+function switchView(mode) {
+  VIEW_MODE = mode;
+
+  // Update tab button styles
+  document.querySelectorAll('.gv-tab').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === mode));
+
+  // Update SPHERES live data from stored _all / _ind
+  SPHERES.forEach(s => {
+    const d = mode === 'ind' ? s._ind : s._all;
+    s.n_studies   = d.n;
+    s.studies_pos = d.pos;
+    s.studies_neg = d.neg;
+    s.cond        = d.cond;
+    s.bidi        = d.bidi;
+    s.strict      = d.strict;
+    s.moderate    = d.moderate;
+    s.loose       = d.loose;
+    s.pos_score   = d.pos_score || 0;
+    s.neg_score   = d.neg_score || 0;
+  });
+
+  // Update spider polygons
+  const qualPts = SPHERES.map(s => {
+    const f = Math.max(0.06, (s.strict + s.moderate) / s.n_studies) * 0.92;
+    return [cx + R_ORB * f * Math.cos(s.angle), cy + R_ORB * f * Math.sin(s.angle)];
+  });
+  const strictPts = SPHERES.map(s => {
+    const f = Math.max(0.04, s.strict / s.n_studies * 5);
+    return [cx + R_ORB * f * Math.cos(s.angle), cy + R_ORB * f * Math.sin(s.angle)];
+  });
+  svg.select('.qual-poly').transition().duration(450)
+    .attr('points', qualPts.map(p => p.join(',')).join(' '));
+  svg.select('.strict-poly').transition().duration(450)
+    .attr('points', strictPts.map(p => p.join(',')).join(' '));
+
+  // Update each sphere node
+  SPHERES.forEach(s => {
+    const sphG = d3.select('#sph-g-' + s.id);
+    const tot = s.n_studies || 1;
+    // Inner ring radius — quality % normalised
+    const qRatio = (s.strict + s.moderate) / (s.n_studies || 1);
+    sphG.select('.sph-inner-ring').transition().duration(450)
+      .attr('r', 6 + qRatio * 20);
+
+    // Node fill + stroke: update to reflect new direction balance
+    sphG.select('.node-circle').transition().duration(450)
+      .attr('fill', dirFill(s)).attr('stroke', dirStroke(s));
+
+    // Quality coverage label (below node)
+    const qCov2 = Math.round((s.strict + s.moderate) / (s.n_studies || 1) * 100);
+    const nLblCol2 = qCov2 >= 75 ? '#1a5c32' : qCov2 >= 50 ? '#78716c' : '#9a3412';
+    sphG.select('.sph-n-lbl').text(`Q${qCov2}%`).attr('fill', nLblCol2);
+    sphG.select('.sph-n-count').text(`n=${s.n_studies}`);
+
+    // Direction badges: pos% and neg% of total studies
+    const svPctPos = Math.round((s.studies_pos || 0) / (s.n_studies || 1) * 100);
+    const svPctNeg = Math.round((s.studies_neg || 0) / (s.n_studies || 1) * 100);
+    sphG.select('.sph-q-lbl-pos').text(`↑${svPctPos}%`).attr('fill','#166534');
+    sphG.select('.sph-q-lbl-neg').text(`↓${svPctNeg}%`).attr('fill','#991b1b');
+  });
+
+  // Industry banner
+  const banner = document.getElementById('industry-banner');
+  if (banner) banner.style.display = mode === 'ind' ? 'flex' : 'none';
+
+  // Update ENV_SPHERE data & redraw env ring
+  if (typeof ENV_SPHERE !== 'undefined') {
+    const envD = mode === 'ind' ? ENV_SPHERE._ind : ENV_SPHERE._all;
+    ENV_SPHERE.n_studies   = envD.n;
+    ENV_SPHERE.studies_pos = envD.pos;
+    ENV_SPHERE.studies_neg = envD.neg;
+    ENV_SPHERE.strict      = envD.strict;
+    ENV_SPHERE.moderate    = envD.moderate;
+    ENV_SPHERE.loose       = envD.loose;
+
+    const ev = ENV_SPHERE;
+    const arcTot = (ev.strict + ev.moderate + ev.loose) || 1;
+    const sA = (ev.strict   / arcTot) * Math.PI * 2;
+    const mA = (ev.moderate / arcTot) * Math.PI * 2;
+    const lA = (ev.loose    / arcTot) * Math.PI * 2;
+    const envArc = d3.arc().innerRadius(R_ENV_I).outerRadius(R_ENV_O).cornerRadius(2);
+
+    // Remove existing env arc paths (inside .env-ring-g, already translated)
+    const envRingG = g.select('.env-ring-g');
+    envRingG.selectAll('.env-arc').remove();
+
+    // Redraw arc with weighted scores
+    const svEvTot = (ev.pos_score + ev.neg_score) || 0;
+    if (svEvTot > 0) {
+      const svEvPA = (ev.pos_score / svEvTot) * Math.PI * 2;
+      const svEvNA = (ev.neg_score / svEvTot) * Math.PI * 2;
+      if (svEvPA > 0.01)
+        envRingG.append('path').attr('class','env-arc env-arc-pos')
+          .attr('d', envArc({ startAngle: -Math.PI/2, endAngle: -Math.PI/2 + svEvPA }))
+          .attr('fill', 'rgba(22,101,52,0.88)');
+      if (svEvNA > 0.01)
+        envRingG.append('path').attr('class','env-arc env-arc-neg')
+          .attr('d', envArc({ startAngle: -Math.PI/2 + svEvPA, endAngle: -Math.PI/2 + svEvPA + svEvNA }))
+          .attr('fill', 'rgba(153,27,27,0.88)');
+    }
+
+    // Update ↑pos% badge (class: env-ring-badge)
+    const envPosPct = ev.n_studies > 0 ? Math.round((ev.studies_pos / ev.n_studies) * 100) : 0;
+    const envBadgeCol = ev.dominant === 'positive' ? '#1a5c32'
+                      : ev.dominant === 'negative' ? '#7f0000' : '#78716C';
+    g.select('.env-ring-badge').text(`↑${envPosPct}%`).attr('fill', envBadgeCol);
+
+    // Update Q% label (class: env-ring-qbadge)
+    const envQcov = ev.n_studies > 0 ? Math.round(((ev.strict + ev.moderate) / ev.n_studies) * 100) : 0;
+    const envQcol = envQcov >= 75 ? '#1a5c32' : envQcov >= 50 ? '#78716c' : '#9a3412';
+    g.select('.env-ring-qbadge').text(`Q${envQcov}%`).attr('fill', envQcol);
+  }
+
+  // Re-render open panel
+  const ph = document.getElementById('ph');
+  if (ph && ph.style.display !== 'none') {
+    const phTitle = ph.querySelector('.ph-title');
+    if (phTitle) {
+      const sp = SPHERES.find(s => s.label === phTitle.textContent.trim());
+      if (sp) showPanel(sp);
+    }
+  }
+}
+
+function showPanel(s) {
+  const ph = document.getElementById('ph');
+  const pb = document.getElementById('pb');
+  ph.style.display = 'block';
+
+  const mode = typeof VIEW_MODE !== 'undefined' ? VIEW_MODE : 'all';
+
+  // ── Industry classifier (for studies_all list) ──────────────────────────
+  const IND_KW = ['Google','YouTube','Gemini','DeepMind','OpenAI','ChatGPT','GPT-4','GPT-3',
+    'Microsoft','Copilot','Meta ','Instagram','Facebook','Apple ','Siri','Amazon','Alexa',
+    'Samsung','Baidu','Duolingo','Khanmigo','MagicSchool','MindScratch','Building Bridges',
+    'product study','internal evaluation'];
+  function isIndustry(st) {
+    const h = (st.label||'')+' '+(st.causal_confidence||'')+' '+(st.note||'');
+    return IND_KW.some(k => h.includes(k));
+  }
+  const IND_FINDING_KW = ['Google','OpenAI','Microsoft','Meta ','Duolingo','Khanmigo',
+    'MagicSchool','MindScratch','Building Bridges','Gemini','GPT-4','ChatGPT'];
+  function isIndFinding(str) { return IND_FINDING_KW.some(k => str.includes(k)); }
+
+  const allStudies  = s.studies_all || [];
+  const showStudies = mode === 'ind' ? allStudies.filter(st => !isIndustry(st)) : allStudies;
+  const showBenefits = mode === 'ind'
+    ? (s.top_benefits || []).filter(b => !isIndFinding(b))
+    : (s.top_benefits || []);
+  const showRisks = mode === 'ind'
+    ? (s.top_risks || []).filter(r => !isIndFinding(r))
+    : (s.top_risks || []);
+  const hiddenStudies = allStudies.length - showStudies.length;
+  const hiddenBenefits = (s.top_benefits||[]).length - showBenefits.length;
+  const hiddenRisks = (s.top_risks||[]).length - showRisks.length;
+
+  // Stats from current mode (updated by switchView)
+  const tot = s.n_studies;
+  const strict = s.strict || 0, moderate = s.moderate || 0, loose = s.loose || 0;
+  const unclear_ev = Math.max(0, tot - strict - moderate - loose);
+  const qPct = Math.round((strict + moderate) / tot * 100);
+  const pos = s.studies_pos, neg = s.studies_neg;
+  const cond = s.cond || 0, bidi = s.bidi || 0;
+  const unclear_eff = Math.max(0, tot - pos - neg - cond - bidi);
+
+  function parseFinding(str) {
+    const m = str.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (m) return { text: m[1].trim(), citation: m[2].trim() };
+    return { text: str, citation: null };
+  }
+  function scholarLink(q) {
+    return 'https://scholar.google.com/scholar?q=' + encodeURIComponent(q);
+  }
+
+  const isGap = s.id==='metacognitive'||s.id==='sensorimotor'||s.id==='environmental';
+
+  ph.innerHTML = `
+    <div class="ph-sec-label" style="color:${s.color}">HERLIN Sphere · ${s.id}</div>
+    ${isGap ? '<span class="gap-badge">Research Gap</span>' : ''}
+    <div class="ph-title">${s.label}</div>
+    <div class="ph-sub">${s.sublabel}</div>
+    <div style="display:flex;gap:14px;margin-top:12px;padding-top:12px;border-top:1px solid var(--cream)">
+      <div style="text-align:center;flex:1">
+        <div class="ev-qual-pct">${tot}</div>
+        <div class="ev-qual-lbl">Studies</div>
+      </div>
+      <div style="text-align:center;flex:1">
+        <div class="ev-qual-pct" style="color:${qPct>=75?'#166534':qPct>=50?'#78716C':'#991b1b'}">${qPct}%</div>
+        <div class="ev-qual-lbl">Quality (strict+mod)</div>
+      </div>
+      <div style="text-align:center;flex:1">
+        <div class="ev-qual-pct">${s.rct_count||0}</div>
+        <div class="ev-qual-lbl">Strict studies</div>
+      </div>
+    </div>`;
+
+  let html2 = '';
+
+  // ── Evidence quality tiers ────────────────────────────────────────────────
+  html2 += `<div class="p-sec">Evidence quality — Przybylski framework</div>`;
+  const tiers = [
+    {label:'Strict',      n:strict,     fill:'#0f0e0c', dot:'#0f0e0c'},
+    {label:'Moderate',    n:moderate,   fill:s.dominant==='negative'?'#991b1b':s.dominant==='positive'?'#166534':'#78716c',
+                                        dot:s.dominant==='negative'?'rgba(185,28,28,0.5)':s.dominant==='positive'?'rgba(22,101,52,0.5)':'#a0a09a'},
+    {label:'Loose',       n:loose,      fill:'#c8c0b0', dot:'#c8c0b0'},
+    {label:'Unclassified',n:unclear_ev, fill:'#e8e4de', dot:'#e8e4de'},
+  ];
+  tiers.forEach(t => {
+    if (t.n <= 0) return;
+    const pct = Math.round(t.n / tot * 100);
+    html2 += `<div class="ev-tier-row">
+      <div class="ev-tier-dot" style="background:${t.dot}"></div>
+      <div class="ev-tier-label">${t.label}</div>
+      <div class="ev-tier-bar"><div class="ev-tier-fill" style="width:${pct}%;background:${t.fill};opacity:0.7"></div></div>
+      <div class="ev-tier-n">${t.n}</div>
+      <div class="ev-tier-pct">${pct}%</div>
+    </div>`;
+  });
+
+  // ── Effect direction ──────────────────────────────────────────────────────
+  html2 += `<div class="p-sec" style="margin-top:14px">Effect direction</div>`;
+  const effects = [
+    {icon:'↑',label:'Positive',      n:pos,         col:'#166534'},
+    {icon:'↓',label:'Negative',      n:neg,         col:'#991b1b'},
+    {icon:'↔',label:'Conditional',   n:cond,        col:'#92400e'},
+    {icon:'⇄',label:'Bidirectional', n:bidi,        col:'#7c3aed'},
+    {icon:'?',label:'Not established',n:unclear_eff,col:'#c8c0b0'},
+  ];
+  const maxEff = Math.max(...effects.map(e=>e.n), 1);
+  effects.forEach(e => {
+    if (e.n <= 0) return;
+    const pct = Math.round(e.n / tot * 100);
+    html2 += `<div class="eff-row">
+      <div class="eff-icon" style="color:${e.col}">${e.icon}</div>
+      <div class="eff-label">${e.label}</div>
+      <div class="eff-bar"><div class="eff-fill" style="width:${Math.round(e.n/maxEff*100)}%;background:${e.col};opacity:0.5"></div></div>
+      <div class="eff-n" style="color:${e.col}">${e.n} <span style="color:var(--muted)">(${pct}%)</span></div>
+    </div>`;
+  });
+
+
+  // ── Causal Mechanisms — score band + pills ───────────────────────────────
+  const mechTot = (s.mech_pos||0) + (s.mech_neg||0) + (s.mech_cond||0) || 1;
+  const mechNetLbl = (s.mech_pos||0) >= (s.mech_neg||0)
+    ? `+${(s.mech_pos||0)-(s.mech_neg||0)} net positive`
+    : `–${(s.mech_neg||0)-(s.mech_pos||0)} net negative`;
+  const mechNetCol = (s.mech_pos||0) >= (s.mech_neg||0) ? '#166534' : '#991b1b';
+  html2 += `<div class="p-sec" style="margin-top:14px">Causal mechanism balance — Przybylski theory specification</div>`;
+  // Score bar
+  html2 += `<div style="display:flex;gap:2px;height:6px;border-radius:3px;overflow:hidden;margin-bottom:6px">
+    <div style="width:${Math.round((s.mech_pos||0)/mechTot*100)}%;background:rgba(22,101,52,0.85)"></div>
+    <div style="width:${Math.round((s.mech_neg||0)/mechTot*100)}%;background:rgba(153,27,27,0.85)"></div>
+    <div style="width:${Math.round((s.mech_cond||0)/mechTot*100)}%;background:rgba(180,83,9,0.80)"></div>
+  </div>`;
+  html2 += `<div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">
+    <span style="color:#166534">↑ Positive ${Math.round((s.mech_pos||0)/mechTot*100)}% (${s.mech_pos||0} pts)</span>
+    <span style="color:${mechNetCol};font-weight:600">${mechNetLbl}</span>
+    <span style="color:#991b1b">↓ Negative ${Math.round((s.mech_neg||0)/mechTot*100)}% (${s.mech_neg||0} pts)</span>
+  </div>`;
+  if (s.mechanisms && s.mechanisms.length) {
+    html2 += `<div class="mech-pill-list">`;
+    s.mechanisms.forEach(m => {
+      const cls = m.dir==='pos'?'mech-pill-pos':m.dir==='neg'?'mech-pill-neg':'mech-pill-cond';
+      const icon = m.dir==='pos'?'↑':m.dir==='neg'?'↓':'~';
+      html2 += `<div class="mech-pill ${cls}" title="${m.note||''}">
+        <span class="mech-pill-icon">${icon}</span>${m.label}
+      </div>`;
+    });
+    html2 += `</div>`;
+  }
+
+  // ── Positive findings ─────────────────────────────────────────────────────
+  if (showBenefits.length) {
+    html2 += `<div class="p-sec" style="margin-top:14px">Positive findings — moderate/strict evidence
+      ${hiddenBenefits>0?'<span class="filter-tag">'+hiddenBenefits+' industry finding'+(hiddenBenefits>1?'s':'')+' not shown</span>':''}
+    </div><div class="mech-list">`;
+    showBenefits.forEach(b => {
+      const isStrict = b.includes('RCT')||b.includes('N=')||b.includes('cluster');
+      const {text,citation} = parseFinding(b);
+      const link = scholarLink(citation?citation.replace(/\s*—.*$/,'').trim():text.substring(0,60));
+      const citeHtml = citation
+        ? `<span class="finding-citation"><a href="${link}" target="_blank" rel="noopener">${citation} ↗</a></span>` : '';
+      html2 += `<div class="finding-item pos">
+        <span class="finding-badge ${isStrict?'strict':'mod'}">${isStrict?'Strict':'Moderate'}</span>
+        <div class="finding-body"><span class="finding-text">${text}</span>${citeHtml}</div>
+      </div>`;
+    });
+    html2 += `</div>`;
+  }
+
+  // ── Risk findings ─────────────────────────────────────────────────────────
+  if (showRisks.length) {
+    html2 += `<div class="p-sec" style="margin-top:14px">Risk findings — moderate/strict evidence
+      ${hiddenRisks>0?'<span class="filter-tag">'+hiddenRisks+' industry finding'+(hiddenRisks>1?'s':'')+' not shown</span>':''}
+    </div><div class="mech-list">`;
+    showRisks.forEach(r => {
+      const isStrict = r.includes('RCT')||r.includes('N=')||r.includes('meta-analysis')||r.includes('Meta-analysis');
+      const isCond = r.startsWith('⚠');
+      const {text,citation} = parseFinding(r);
+      const link = scholarLink(citation?citation.replace(/\s*—.*$/,'').trim():text.substring(0,60));
+      const citeHtml = citation
+        ? `<span class="finding-citation"><a href="${link}" target="_blank" rel="noopener">${citation} ↗</a></span>` : '';
+      html2 += `<div class="finding-item ${isCond?'cond':'neg'}">
+        <span class="finding-badge ${isStrict?'strict':'mod'}">${isStrict?'Strict':'Moderate'}</span>
+        <div class="finding-body"><span class="finding-text">${text}</span>${citeHtml}</div>
+      </div>`;
+    });
+    html2 += `</div>`;
+  }
+
+  // ── All studies list ──────────────────────────────────────────────────────
+  // Re-sort studies so that directions are interleaved within each quality tier.
+  // Without this, the 60-study cap would systematically exclude negatives because
+  // studies_all was originally sorted positive-first.
+  function interleaveStudies(arr) {
+    function tierRank(st) {
+      const n = parseFloat((st.evidence_strength || '0').split('/')[0]);
+      return n >= 4.5 ? 0 : n >= 3 ? 1 : 2;
+    }
+    function dirRank(st) {
+      const d = (st.effect_direction || '').toLowerCase();
+      return d === 'positive' ? 0 : d === 'negative' ? 1 : d === 'conditional' ? 2 : d === 'bidirectional' ? 3 : 4;
+    }
+    const result = [];
+    [0, 1, 2].forEach(t => {
+      const tierItems = arr.filter(st => tierRank(st) === t);
+      if (!tierItems.length) return;
+      // Group by direction within this tier
+      const dirKeys = [...new Set(tierItems.map(dirRank))].sort((a, b) => a - b);
+      const buckets = {};
+      dirKeys.forEach(d => { buckets[d] = tierItems.filter(st => dirRank(st) === d); });
+      // Round-robin pull from each direction bucket
+      let any = true;
+      while (any) {
+        any = false;
+        dirKeys.forEach(d => {
+          if (buckets[d].length) { result.push(buckets[d].shift()); any = true; }
+        });
+      }
+    });
+    return result;
+  }
+  const displayStudies = interleaveStudies(showStudies);
+
+  html2 += `<div class="p-sec" style="margin-top:14px">
+    ${mode==='ind'?'Independent studies':'All studies'} — ${showStudies.length}
+    ${hiddenStudies>0?'<span class="filter-tag">'+hiddenStudies+' industry '+(hiddenStudies===1?'study':'studies')+' not shown</span>':''}
+  </div>`;
+  displayStudies.forEach(st => {
+    const evN = parseFloat((st.evidence_strength||'0').split('/')[0]);
+    const tier = evN>=4.5?'Strict':evN>=3?'Moderate':'Loose';
+    const tierCol = evN>=4.5?'#0f0e0c':evN>=3?'#5a5248':'#a0a09a';
+    const eff = (st.effect_direction||'mixed').toLowerCase();
+    const effCol2 = eff==='positive'?'#166534':eff==='negative'?'#991b1b':eff==='bidirectional'?'#7c3aed':'#78716c';
+    const effIcon = eff==='positive'?'↑':eff==='negative'?'↓':eff==='bidirectional'?'⇄':'~';
+    const effLabel = eff==='positive'?'Positive':eff==='negative'?'Negative':eff==='bidirectional'?'Bidirectional':eff==='conditional'?'Conditional':'Mixed';
+    const raw = st.label||'';
+    const clean = raw.replace(/\s*\([^)]+,\s*\d{4}\)\s*$/,'').trim();
+    const slink = scholarLink(clean||raw);
+    html2 += `<div class="st-item">
+      <div class="st-dot" style="background:${effCol2}"></div>
+      <div style="flex:1;min-width:0">
+        <div class="st-text"><a href="${slink}" target="_blank" rel="noopener" class="st-link">${raw}</a></div>
+        <div class="st-meta">
+          <span class="st-tier-badge" style="background:${evN>=4.5?'#e8e4de':evN>=3?'#f3f0ea':'#f7f4ef'};color:${tierCol};border:1px solid ${tierCol}30">${tier}</span>
+          <span>${st.evidence_strength||'–'}</span>
+          <span style="color:var(--muted)">·</span>
+          <span>${st.causal_confidence||'–'}</span>
+          <span style="color:var(--muted)">·</span>
+          <span style="color:${effCol2};font-weight:600">${effIcon} ${effLabel}</span>
+          ${st.note?'<span style="color:var(--muted)">·</span><em class="st-note">'+st.note+'</em>':''}
+        </div>
+      </div>
+    </div>`;
+  });
+
+  if (isGap) {
+    html2 += `<div class="callout" style="margin-top:14px"><strong>Under-documented domain.</strong>
+    Low study count (n=${tot}) signals a research gap, not an absence of effect.
+    Strict tier: ${strict} studies — high quality but insufficient for robust conclusions.</div>`;
+  }
+  if (s.id === 'academic') {
+    html2 += `<div class="callout accent" style="margin-top:14px"><strong>Symptom sphere.</strong>
+    In the KORA framework, academic outcomes are where difficulties become <em>visible</em>.
+    The other seven spheres reveal the underlying <em>causes</em>.</div>`;
+  }
+
+  pb.innerHTML = html2;
+}
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  AI SAFETY PROCESS — Force-Directed Network (D3 v7)
+// ═══════════════════════════════════════════════════════
+
+const CLUSTERS = {
+  academic: { id:'academic', label:'Academic Research',        color:'#2563eb', cx_f:.20, cy_f:.38 },
+  civil:    { id:'civil',    label:'Civil Society & NGOs',     color:'#d97706', cx_f:.78, cy_f:.65 },
+  policy:   { id:'policy',   label:'Policy, Governance & Frameworks', color:'#059669', cx_f:.73, cy_f:.28 },
+  bench:    { id:'bench',    label:'Benchmarks & Evaluation',  color:'#7c3aed', cx_f:.27, cy_f:.70 },
+};
+
+const SNODES = [
+
+  // ── ACADEMIC RESEARCH ──────────────────────────────────────────────────────
+  { id:'a1', cluster:'academic', label:'Stanford HAI / SCALE', size:22,
+    full:'Stanford Human-Centered AI — SCALE Lab + Childhood & AI Lab (2025)',
+    desc:'Stanford SCALE: 1,267 peer-reviewed studies on GenAI in K-12 (2023–2026) — the largest systematic corpus on child-facing AI outcomes. The Childhood & AI Lab (launched 2025) is the first dedicated research network studying AI\'s cognitive and developmental effects on children. Key researchers: Jeff Hancock (Social Media Lab), Emma Brunskill (RL), Anna Lembke (dopamine/dependency).',
+    out:{ p1:'SCALE corpus cited in EU AI Act impact assessment', p3:'Stanford evidence informs UNESCO AI Competency Framework', b1:'SCALE grounds KORA sphere counts and evidence scoring', b3:'Stanford Brainstorm Lab contributes to Safe-Child-LLM benchmark design' }},
+
+  { id:'a2', cluster:'academic', label:'Oxford Internet Institute', size:20,
+    full:'Oxford Internet Institute — Kids and Screens Programme',
+    desc:'OII produces the largest population-level evidence on digital screen time and child wellbeing. Andrew Przybylski and Amy Orben\'s N=120,115 study (2017) established the Goldilocks hypothesis. The Kids and Screens programme directly informs UK and EU child AI safety regulation. Victoria Nash leads digital policy research.',
+    out:{ p2:'OII evidence cited in UK Children\'s Safety Codes (2024)', p1:'Przybylski evidence used in EU AI Act child wellbeing provisions', p3:'OII contributes to UNESCO screen time evidence synthesis' }},
+
+  { id:'a3', cluster:'academic', label:'Digital Futures for Children', size:18,
+    full:'Digital Futures for Children — LSE & 5Rights Foundation Joint Centre',
+    desc:'Joint research centre (LSE + 5Rights Foundation, est. 2023). Director: Prof. Sonia Livingstone (LSE), Chair: Baroness Beeban Kidron. Produces rights-based evidence on children\'s digital experiences across 30+ countries via EU Kids Online. Directly feeds into UK OSA enforcement, EU DSA Article 34, and UNESCO guidance.',
+    out:{ p2:'DFC evidence cited in UK Children\'s Safety Codes', p1:'EU Kids Online data cited in EU AI Act impact assessment', c3:'5Rights co-founded the DFC research centre' }},
+
+  { id:'a4', cluster:'academic', label:'Oxford CCAI Design Lab', size:14,
+    full:'Oxford Child-Centred AI (CCAI) Design Lab',
+    desc:'Oxford research lab focused on child-centred AI design: digital autonomy, age-appropriate AI systems, data safety for young people. Produces design guidelines adopted by major tech platforms and cited in Council of Europe AI education programmes.',
+    out:{ p5:'Oxford CCAI contributes to Council of Europe AI&ED programme', p1:'CCAI design principles cited in EU AI Act guidelines' }},
+
+  { id:'a5', cluster:'academic', label:'Alan Turing Institute', size:16,
+    full:'The Alan Turing Institute — Children and AI Programme',
+    desc:'UK national institute for data science and AI. Children and AI research programme studies generative AI impact on children, legal frameworks mapping, and rights-based AI design. Co-organised the Children\'s AI Summit (Feb 2025, 150+ children). Collaborators: UNICEF, LEGO, Council of Europe, Children\'s Parliament.',
+    out:{ p5:'Turing co-authored Council of Europe AI&ED programme', p2:'Turing evidence informs UK Ofcom Children\'s Safety Codes', p3:'Turing contributes to UNESCO AI Ethics framework' }},
+
+  { id:'a6', cluster:'academic', label:'MIT Media Lab', size:14,
+    full:'MIT Media Lab — Personal Robots Group & Learning Sciences',
+    desc:'Laura E. Schulz (Early Childhood Cognition Lab Director, Expert Validator KORA v1). Scratch programming environment (150M+ users). Open-source AI ethics curriculum for middle school. Research on social robots and child agency shapes understanding of how AI design affects creative development.',
+    out:{ p3:'Scratch underpins UNESCO digital literacy competency framework', a1:'MIT studies appear in Stanford SCALE corpus' }},
+
+  { id:'a7', cluster:'academic', label:'Stanford Brainstorm Lab', size:13,
+    full:'Stanford Brainstorm Lab for Mental Health Innovation',
+    desc:'Dr. Nina Vasan directs research on AI companions, chatbots, and mental health impacts on youth. 2025 study documented unsafe responses by AI companions to teen mental health crises across 7 major platforms — now cited in US congressional testimony and Common Sense Media AI Safety Institute standards.',
+    out:{ b3:'Brainstorm findings shape Safe-Child-LLM benchmark criteria', c1:'Brainstorm Lab research cited in Common Sense Media AI Safety Institute' }},
+
+  { id:'a8', cluster:'academic', label:'Harvard Berkman Klein', size:13,
+    full:'Harvard Berkman Klein Center — Youth & Media Programme',
+    desc:'Leah Plunkett leads youth digital rights research ("Sharenthood", COPPA reform). The Youth & Media programme produces the evidence base for COPPA reform, children\'s data rights, and AI companion regulation. Research cited in US congressional testimony and FTC rulemaking.',
+    out:{ p6:'Berkman Klein research cited in FTC COPPA 2024 rulemaking', p2:'Harvard evidence informs UK Children\'s Code standards' }},
+
+  { id:'a9', cluster:'academic', label:'Iowa State — Gentile Lab', size:11,
+    full:'Iowa State University — Media Research Lab (Douglas Gentile)',
+    desc:'Douglas Gentile\'s landmark longitudinal studies on screen media effects on child cognition, attention, sleep, and aggression. His work establishes key evidence on dose-response relationships now applied to GenAI risk modelling. Cited in AAP screen time guidelines and multiple regulatory impact assessments.',
+    out:{ p7:'Gentile research underpins AAP screen time and AI guidelines' }},
+
+  { id:'a10', cluster:'academic', label:'Joan Ganz Cooney Center', size:12,
+    full:'Joan Ganz Cooney Center at Sesame Workshop',
+    desc:'Research and innovation lab at Sesame Workshop studying media, technology, and children\'s learning. Produces research on AI in early childhood education, equity in digital access, and learning outcomes. Closely aligned with UNICEF and UNESCO on early childhood AI policy.',
+    out:{ p3:'Cooney Center research cited in UNESCO early childhood AI guidance', p4:'Cooney Center contributes to UNICEF AI for children programme' }},
+
+  { id:'a11', cluster:'academic', label:'American Academy of Pediatrics', size:14,
+    full:'American Academy of Pediatrics (AAP) — Council on Communications & Media',
+    desc:'Jonathan D. Klein chairs the AAP digital health working group. AAP produces clinical guidelines on screen time, AI companion use, and social media exposure for 0–18 year-olds — the primary paediatric authority cited in US regulatory and legislative proceedings on child AI safety.',
+    out:{ p6:'AAP guidelines inform FTC COPPA enforcement standards', p4:'AAP co-authors UNICEF paediatric AI guidance' }},
+
+  { id:'a12', cluster:'academic', label:'INRIA / Ramus Lab', size:10,
+    full:'INRIA / Collège de France — Cognitive Neuroscience of Language (Franck Ramus)',
+    desc:'Franck Ramus (Collège de France) produces neurocognitive evidence on reading development, screen exposure, and AI-mediated language acquisition. French national expert on children, screens, and cognitive development. Evidence cited in French national report on screens and children (2023) and EU child AI provisions.',
+    out:{ p1:'Ramus evidence cited in French contribution to EU AI Act child provisions' }},
+
+  // ── CIVIL SOCIETY & NGOs ───────────────────────────────────────────────────
+  { id:'c1', cluster:'civil', label:'Common Sense Media', size:22,
+    full:'Common Sense Media — Youth AI Safety Institute (launched 2026)',
+    desc:'Largest independent nonprofit rating children\'s digital media. Launched the Youth AI Safety Institute (May 2026, $20M annual budget) — the first independent AI product testing lab for child safety. Funders: OpenAI Foundation, Anthropic, Pinterest, Walton Family Foundation. Services: red-teaming, scorecards, published safety reports. CEO: Jim Steyer; Senior Policy: Robbie Torney (KORA contact).',
+    out:{ b2:'Common Sense Media operates the Youth AI Safety Institute benchmark', p1:'CSM participates in EU AI Code of Practice (2024)', p3:'CSM cited in UNESCO AI Competency Framework for Students' }},
+
+  { id:'c2', cluster:'civil', label:'Thorn', size:20,
+    full:'Thorn — Stop Child Sexual Abuse Material Generated by AI',
+    desc:'Leading nonprofit combating child sexual abuse material (CSAM). CEO: Julie Cordua; VP Research: Melissa Stroebel (both KORA contacts). Pioneered Safety by Design principles (signed by 15+ AI companies). AI-CSAM classifier tools used by major platforms. Reports: AI-CSAM surged from 4,700 (2023) to 400,000+ reports in H1 2025. Core voice in EU AI Act Art. 5 prohibited uses and COPPA expansion.',
+    out:{ p6:'Thorn advocates for COPPA expansion to cover AI-generated CSAM', p1:'Thorn AI-CSAM report cited in EU AI Act Art. 5 prohibited uses', c9:'Thorn co-developed Safety by Design with All Tech Is Human' }},
+
+  { id:'c3', cluster:'civil', label:'5Rights Foundation', size:19,
+    full:'5Rights Foundation — Children\'s Digital Rights',
+    desc:'Founded by Baroness Beeban Kidron. Co-authored the UK Age Appropriate Design Code (Children\'s Code, 2021) with ICO — now adopted in UK, Australia, EU, Canada, Argentina, California. Submitted formal evidence to EU AI Act trilogue (2023). Co-founded Digital Futures for Children (LSE). Jenny Afia (co-founder) is a KORA contact and privacy law expert.',
+    out:{ p2:'5Rights co-authored the UK Age Appropriate Design Code (2021)', p1:'5Rights submitted formal evidence to EU AI Act trilogue (2023)', b8:'5Rights principles underpin IEEE 2089 Standard' }},
+
+  { id:'c4', cluster:'civil', label:'NCMEC', size:17,
+    full:'National Center for Missing & Exploited Children — CyberTipline',
+    desc:'US nonprofit receiving mandatory AI-CSAM reports from tech platforms. CyberTipline processes 1M+ reports; hash database of 10M+ known CSAM files. AI-generated CSAM now a primary challenge. NCMEC is the central infrastructure node for child protection technology in the USA, cited in all US legislative proceedings on AI and children.',
+    out:{ p6:'NCMEC is the statutory partner for FTC/DOJ child protection enforcement', c2:'NCMEC co-operates hash database with Thorn for CSAM detection' }},
+
+  { id:'c5', cluster:'civil', label:'Internet Watch Foundation', size:15,
+    full:'Internet Watch Foundation (IWF) — AI-CSAM Detection, UK',
+    desc:'UK nonprofit with 25+ years removing online child sexual abuse material. Operates AI-powered detection and removal of CSAM. Works with Thorn and NCMEC on cross-border hash database. Cited in EU AI Act prohibited uses and UK Online Safety Act enforcement. Partner to EU AI Office Code of Practice.',
+    out:{ p1:'IWF evidence cited in EU AI Act Art. 5 prohibited uses', p2:'IWF partners with UK Ofcom on Online Safety Act enforcement' }},
+
+  { id:'c6', cluster:'civil', label:'All Tech Is Human', size:13,
+    full:'All Tech Is Human — Youth Tech Wellbeing Initiative',
+    desc:'Nonprofit coalition building responsible technology practices. Youth Tech Wellbeing programme co-developed Safety by Design Generative AI Principles with Thorn — signed by 15+ AI companies. Bridges child protection NGOs, tech industry, and policymakers on AI safety commitments.',
+    out:{ c2:'Co-developed Generative AI Safety by Design Principles with Thorn' }},
+
+  { id:'c7', cluster:'civil', label:'Keep Safe AI', size:16,
+    full:'Keep Safe AI — Child AI Safety Benchmark Initiative',
+    desc:'Co-founder: James Ryan (KORA contact, Cambridge/USA). Dedicated organisation developing child-specific AI safety standards and evaluation tools. Closest parallel initiative to KORA Bench; scope covers child-facing AI safety assessment across developmental domains.',
+    out:{ b1:'Keep Safe AI benchmark is the closest parallel initiative to KORA Bench', p1:'Keep Safe AI contributes to EU AI Office Code of Practice' }},
+
+  { id:'c8', cluster:'civil', label:'SAIFCA', size:13,
+    full:'Safe AI for Children Alliance (SAIFCA)',
+    desc:'Global mission-led alliance reducing AI risks to children. Brings together expertise across AI governance, child protection, education, law, and public policy. Provides Global South perspective largely absent from Western-dominated child AI safety discourse.',
+    out:{ p3:'SAIFCA contributes to UNESCO AI ethics implementation in Global South' }},
+
+  { id:'c9', cluster:'civil', label:'Family Online Safety Inst.', size:12,
+    full:'Family Online Safety Institute (FOSI)',
+    desc:'International nonprofit with 30+ member companies (tech, telecom, social media, gaming). Bi-annual Online Safety Survey; parental controls research (2025). Bridges industry and civil society on child online safety standards. Contributes to OECD Digital Safety by Design framework.',
+    out:{ p5:'FOSI contributes to OECD Digital Safety by Design for Children framework' }},
+
+  { id:'c10', cluster:'civil', label:'Fairplay', size:12,
+    full:'Fairplay (formerly CCFC) — Campaign for Commercial-Free Childhood',
+    desc:'US nonprofit advocacy organisation. Led coalition of 260+ organisations calling for a 5-year pause on GenAI deployment in preK-12 schools (2024). Advocates for children\'s right to a childhood free from commercial exploitation, including AI-driven personalisation and engagement manipulation.',
+    out:{ p6:'Fairplay advocacy directly shapes FTC enforcement priorities on children\'s AI' }},
+
+  { id:'c11', cluster:'civil', label:'JED Foundation', size:11,
+    full:'JED Foundation — Mental Health & Technology',
+    desc:'US nonprofit protecting the emotional health and preventing suicide among teens and young adults. Studies tech impacts on youth mental health, AI companion risks, and social media effects. Grant Bowen (Programme Manager) is a KORA contact. JED evidence informs AAP clinical guidelines and US congressional testimony on AI mental health harms.',
+    out:{ a7:'JED Foundation collaborates with Stanford Brainstorm Lab on AI companion safety' }},
+
+  { id:'c12', cluster:'civil', label:'Internet Safety Labs', size:11,
+    full:'Internet Safety Labs — AI Safety Testing',
+    desc:'Executive Director: Lisa LeVasseur (KORA contact). Independent lab testing AI products for child safety. Produces public safety ratings and contributes to EU AI Office Code of Practice consultations. Provides technical testing capacity to civil society organisations without in-house AI evaluation expertise.',
+    out:{ b5:'Internet Safety Labs operates EDSAFE-aligned AI safety testing', p1:'ISL contributes to EU AI Office Code of Practice (2024)' }},
+
+  { id:'c13', cluster:'civil', label:'Center for Humane Technology', size:12,
+    full:'Center for Humane Technology / HumaneBench',
+    desc:'Founded by Tristan Harris. Erika Anderson (buildinghumanetech.com, KORA contact) leads HumaneBench — an assessment tool for humane AI design targeting child wellbeing. Campaigns for design standards that protect children from engagement manipulation, dopamine exploitation, and AI dependency.',
+    out:{ b7:'CHT develops and maintains HumaneBench evaluation tool' }},
+
+  // ── POLICY, GOVERNANCE & FRAMEWORKS ───────────────────────────────────────
+  { id:'p1', cluster:'policy', label:'EU AI Office', size:21,
+    full:'EU AI Office — AI Act Child Protection Implementation',
+    desc:'Established 2024 to implement EU AI Act. Art. 5 prohibits AI exploiting child vulnerabilities. Annex III: high-risk classification for AI in education and emotional recognition near children. Code of Practice process (2024–2025) engaged 1,000+ stakeholders including Thorn, IWF, Common Sense Media, Stanford HAI. First binding AI law with explicit child provisions.',
+    out:{ b8:'EU AI Act implementation requires IEEE 2089-compliant age verification' }},
+
+  { id:'p2', cluster:'policy', label:'UK Ofcom / ICO', size:17,
+    full:'UK Ofcom / ICO — Children\'s Safety Codes (Online Safety Act 2023)',
+    desc:'Children\'s Safety Codes under OSA 2023 require all regulated services to protect children. Ofcom cites OII, LSE/DFC, and 5Rights evidence in risk framework. ICO operates Age Appropriate Design Certification Scheme (AADCS) based on 5Rights-derived UK Children\'s Code. UK is the world\'s most advanced regulatory jurisdiction for child AI safety.',
+    out:{ b8:'ICO implements Age Appropriate Design Code (15 standards, IEEE 2089)' }},
+
+  { id:'p3', cluster:'policy', label:'UNESCO Digital Education', size:17,
+    full:'UNESCO — AI Ethics Recommendation (2021) & AI Competency Framework',
+    desc:'2021 AI Ethics Recommendation (193 states): AI must protect children\'s right to develop their own reasoning. AI Competency Framework for Students (2023) maps to 5 cognitive domains aligned with KORA spheres. Co-authored Policy Guidance on AI for Children (2021) with UNICEF. The foundational international normative framework for child AI safety.',
+    out:{ b1:'KORA spheres aligned with UNESCO AI Competency Framework domains', p5:'UNESCO and Council of Europe co-produce AI education standards' }},
+
+  { id:'p4', cluster:'policy', label:'UNICEF', size:19,
+    full:'UNICEF — AI Office + Innocenti Research Centre',
+    desc:'Multiple KORA contacts: Henrietta Ridley (Chief of AI), Steven Vosloo (Innocenti, children & AI specialist), Viviana Canon Tamayo (Partnership Lead), Eimear Farrell, Thomas Davin (Global Innovation Director). Policy Guidance on AI for Children v3 (2024). Joint Statement on AI and Rights of the Child (Nov 2025, 50+ organisations). Operates in 190+ countries.',
+    out:{ p3:'UNICEF co-authored UNESCO Policy Guidance on AI for Children (2021)', p5:'UNICEF contributes to Council of Europe child AI rights framework', b1:'UNICEF v3 guidance aligns with KORA sphere framework' }},
+
+  { id:'p5', cluster:'policy', label:'Council of Europe', size:15,
+    full:'Council of Europe — Framework Convention on AI (2024)',
+    desc:'First international legally binding AI treaty (opened Sept 2024). Article 18 explicitly protects disabled persons and children. AI&ED (AI and Education) programme with Turing Institute. Collaborated on Children\'s AI Summit (2025, 150+ children). 46 member states + USA, Canada, Japan as observers.',
+    out:{ b8:'CoE Framework Convention references IEEE 2089 age verification standard' }},
+
+  { id:'p6', cluster:'policy', label:'US FTC / COPPA', size:15,
+    full:'Federal Trade Commission — COPPA Rule 2024 Update',
+    desc:'COPPA 2024 update strengthens protections against AI systems collecting children\'s behavioural data under 13. FTC directed to develop public educational resources on AI chatbot risks. Thorn, NCMEC, Fairplay, and Berkman Klein are primary civil society voices in COPPA rulemaking. Companion chatbot disclosure requirements under active legislation (SAFEBOTs Act, 2025).',
+    out:{ b1:'KORA safety scores can serve as evidence in FTC harm assessments' }},
+
+  { id:'p7', cluster:'policy', label:'OECD Education', size:13,
+    full:'OECD — Digital Safety by Design for Children & PISA Digital',
+    desc:'OECD framework "Digital Safety by Design for Children" (8 key components, 2024). PISA digital literacy assessments provide comparative international evidence on child-AI outcomes. Co-developing EU-OECD AI Literacy Framework for primary & secondary education (2026). OECD AI Policy Observatory feeds EU, UK, G20 policy processes.',
+    out:{ p3:'OECD AI Principles align with UNESCO Ethics Recommendation (2021)' }},
+
+  { id:'p8', cluster:'policy', label:'EU AI Act — Art. 5', size:14,
+    full:'EU AI Act 2024 — Child Protection Provisions',
+    desc:'Art. 5: Prohibited uses — AI exploiting children\'s age-related vulnerabilities. Annex III: High-risk classification for AI in education (emotion recognition, assessment systems). Art. 50: Transparency obligations for AI interacting with children. In force August 2024; prohibition provisions apply from February 2025. Foundational legal framework KORA Bench operationalises.',
+    out:{ b1:'KORA Bench operationalises EU AI Act conformity evidence requirements' }},
+
+  { id:'p9', cluster:'policy', label:'UK Children\'s Code', size:13,
+    full:'UK Age Appropriate Design Code (Children\'s Code)',
+    desc:'15 standards for online services likely accessed by children under 18. Developed by ICO with 5Rights Foundation. Now a global template: adopted in Australia, Canada, Argentina, California. Covers data minimisation, geolocation defaults, nudge techniques, and AI-powered profiling of children. Basis for IEEE 2089-2021 international standard.',
+    out:{ b8:'UK Children\'s Code is the basis of IEEE 2089-2021 international standard' }},
+
+  { id:'p10', cluster:'policy', label:'UN CRC — GC25', size:12,
+    full:'UN Convention on the Rights of the Child — General Comment 25 (Digital)',
+    desc:'General Comment 25 (2021): children\'s rights in the digital environment. States must ensure AI systems do not undermine children\'s rights to privacy, development, participation, and protection from harm. The foundational rights framework that UNESCO, UNICEF, 5Rights, and all national regulators reference when designing child AI safety measures.',
+    out:{ p4:'UNICEF co-produced GC25 as implementation guidance', p3:'UNESCO AI ethics recommendation operationalises CRC GC25 for AI systems' }},
+
+  { id:'p11', cluster:'policy', label:'GDPR Art. 8 / COPPA', size:11,
+    full:'GDPR Article 8 + COPPA — Child Data Protection Baseline',
+    desc:'GDPR Art. 8: parental consent required for processing personal data of children under 16 (13 in some states). COPPA: US federal protection under 13. AI systems collecting learning behavioural data trigger both frameworks. Together these set the global minimum baseline for child data protection — the floor on which all child AI safety frameworks build.',
+    out:{ b1:'KORA Bench flags data-intensive AI tools for GDPR/COPPA regulatory scrutiny' }},
+
+  // ── BENCHMARKS & EVALUATION ────────────────────────────────────────────────
+  { id:'b1', cluster:'bench', label:'KORA Bench ★', size:24,
+    full:'KORA Bench — Child AI Safety Evaluation Framework (Herlin 2025)',
+    desc:'The only framework systematically evaluating AI product safety for children across all 7 developmental spheres with evidence grading. Integrates study count, RCT evidence, causal confidence, and outcome polarity into a child-specific safety index usable by schools, parents, and regulators. Grounds KORA sphere counts in Stanford SCALE (475 Academic studies, 85 Neurocognitive, etc.).',
+    out:{
+      p1:'KORA Bench provides empirical evidence layer for EU AI Act conformity',
+      p3:'KORA spheres aligned with UNESCO AI Competency Framework',
+      p4:'UNICEF contact Steven Vosloo — digital specialist, children & AI policy alignment',
+      p7:'OECD contact Quentin Vidal — Digital Education Outlook coordination',
+      a1:'KORA expert validators: Michael Frank, Sunny Xun Liu, Jeff Hancock (Stanford)',
+      a2:'KORA in active exchange with Andrew Przybylski — taxonomy co-construction (Oxford OII)',
+      a6:'KORA expert validator V1: Laura E. Schulz (MIT Early Childhood Cognition Lab)',
+      a7:'KORA contact: Nina Vasan (Stanford Brainstorm Lab) — AI mental health in youth',
+      a8:'KORA contact: Leah Plunkett (Harvard Berkman Klein) — child digital rights',
+      a9:'KORA contacts: Douglas Gentile & Craig Anderson (Iowa State) — media effects evidence',
+      a12:'KORA contacts: Justine Cassell (INRIA Paris) & Franck Ramus — child cognition',
+      c1:'KORA contact: Robbie Torney (Common Sense Media) — Youth AI Safety Institute',
+      c2:'KORA contact: Melissa Stroebel (Thorn) — child safety benchmarking',
+      c3:'KORA contact: Jenny Afia (5Rights Foundation / Schillings) — legal/policy alignment',
+      c7:'KORA contact: James Ryan (Keep Safe AI) — parallel child AI safety benchmark initiative',
+      c8:'KORA contact: Tara Steele (SAIFCA) — South African child AI safety alignment',
+      c11:'KORA contact: Laura Erickson-Schroth (JED Foundation) — youth mental health criteria',
+      c12:'KORA contact: Lisa LeVasseur (Internet Safety Labs) — AI safety testing methodology',
+      c13:'KORA contact: Imran Khan (Center for Humane Technology) — child protection advocacy',
+      b3:'KORA contact: Saleh Afroogh (co-author Safe-Child-LLM Benchmark) — benchmark co-design'
+    }},
+
+  { id:'b2', cluster:'bench', label:'CSM Youth AI Safety Inst.', size:20,
+    full:'Common Sense Media Youth AI Safety Institute (2026)',
+    desc:'First independent AI product testing lab specifically for child safety. $20M annual budget. Services: red-teaming AI products, safety scorecards, risk reports, published evaluations. Advisory board: Mehran Sahami (Stanford), Dr. Jenny Radesky (UMich), Dr. Nadine Burke Harris. Funded by OpenAI Foundation, Anthropic, Pinterest, Walton Family Foundation.',
+    out:{ p1:'CSM YASI evidence feeds EU AI Office Code of Practice', b1:'KORA Bench and CSM YASI cover complementary dimensions of child AI safety' }},
+
+  { id:'b3', cluster:'bench', label:'Safe-Child-LLM Benchmark', size:15,
+    full:'Safe-Child-LLM Benchmark — Academic Evaluation Framework',
+    desc:'200-prompt dataset assessing LLM safety across child (7–12) and adolescent (13–17) developmental stages. 0–5 action labelling system for response safety. First academic benchmark specifically designed for developmental-stage-aware LLM evaluation. Cited in Common Sense Media YASI standards design and EU AI Office technical guidelines.',
+    out:{ b1:'Safe-Child-LLM covers safety; KORA Bench covers developmental outcomes — complementary scope', p1:'Benchmark cited in EU AI Office child AI evaluation guidelines' }},
+
+  { id:'b4', cluster:'bench', label:'ChildSafe Benchmark', size:14,
+    full:'ChildSafe Benchmark — Developmental Stage Simulation',
+    desc:'Evaluates LLM safety by simulating child agents with developmentally authentic behaviour patterns across 4 age bands (6–8, 9–11, 12–14, 15–17). Tests AI responses to age-specific language, curiosity, vulnerability patterns. Adopted in EDSAFE AI framework. Represents the state of the art in child-specific LLM safety testing.',
+    out:{ b5:'ChildSafe Benchmark is integrated into EDSAFE AI SAFE framework' }},
+
+  { id:'b5', cluster:'bench', label:'EDSAFE AI SAFE Benchmark', size:13,
+    full:'EDSAFE AI — SAFE Benchmarks Framework for Education',
+    desc:'EDSAFE AI produces child-centred AI safety benchmarks specifically for educational deployments. SAFE framework evaluates AI products across student safety, accuracy, fairness, and equity dimensions. Integrates ChildSafe Benchmark. Used by US K-12 school districts for AI procurement decisions.',
+    out:{ b1:'EDSAFE SAFE and KORA Bench are complementary — SAFE targets procurement, KORA targets outcomes' }},
+
+  { id:'b6', cluster:'bench', label:'Keep Safe AI Benchmark', size:14,
+    full:'Keep Safe AI — Child AI Safety Benchmark Tool',
+    desc:'James Ryan\'s (KORA contact) organisation developing child-specific AI safety evaluation standards. Closest parallel initiative to KORA Bench in scope. Focuses on safety properties of AI systems deployed near children — complements KORA\'s developmental outcomes focus.',
+    out:{ b1:'Keep Safe AI and KORA Bench are the two closest parallel evaluation frameworks in the field' }},
+
+  { id:'b7', cluster:'bench', label:'HumaneBench (CHT)', size:12,
+    full:'HumaneBench — Center for Humane Technology',
+    desc:'Assessment tool for humane AI design developed by Center for Humane Technology (Erika Anderson, KORA contact). Evaluates AI products on engagement manipulation, dependency design, dopamine exploitation, and attention engineering — dimensions directly affecting child developmental outcomes in KORA\'s Affective and Psychosocial spheres.',
+    out:{ b1:'HumaneBench engagement/dependency metrics complement KORA Affective sphere evidence' }},
+
+  { id:'b8', cluster:'bench', label:'IEEE 2089 / AADC Standard', size:13,
+    full:'IEEE 2089-2021 Standard — Age Appropriate Digital Services',
+    desc:'International standard based on 5Rights Foundation principles and UK Age Appropriate Design Code. IEEE 2089-2021 operationalises 15 design standards for child-safe digital services. Adopted by ICO (UK), referenced in Council of Europe AI Framework Convention, and cited in EU AI Act implementation guidelines. IEEE 2089.1-2024 adds online age verification.',
+    out:{ b1:'IEEE 2089 compliance is a prerequisite KORA Bench recommends for AI product certification' }},
+
+];
+
+const SEDGES = [];
+SNODES.forEach(n => {
+  Object.entries(n.out || {}).forEach(([tgt, lbl]) => {
+    SEDGES.push({ source: n.id, target: tgt, label: lbl });
+  });
+});
+
+let safetyBuilt = false;
+
+function buildSafetyViz() {
+  if (safetyBuilt) return;
+  safetyBuilt = true;
+
+  const container = document.getElementById('safety-canvas');
+  const W = container.clientWidth, H = container.clientHeight;
+
+  // Resolve cluster centres
+  const C = CLUSTERS;
+  Object.values(C).forEach(c => { c.cx = c.cx_f * W; c.cy = c.cy_f * H; });
+
+  // Nodes with initial positions near their cluster
+  const nodes = SNODES.map(d => ({
+    ...d,
+    x: C[d.cluster].cx + (Math.random()-.5)*90,
+    y: C[d.cluster].cy + (Math.random()-.5)*70,
+  }));
+  const byId = {};
+  nodes.forEach(n => byId[n.id] = n);
+
+  const edges = SEDGES.map(e => ({
+    ...e, source: byId[e.source], target: byId[e.target]
+  })).filter(e => e.source && e.target);
+
+  const svg = d3.select('#safety-canvas').append('svg')
+    .attr('width', W).attr('height', H);
+
+  // Arrow markers per cluster colour
+  const defs = svg.append('defs');
+  Object.values(C).forEach(c => {
+    defs.append('marker')
+      .attr('id','arr-'+c.id).attr('viewBox','0 -4 8 8')
+      .attr('refX',8).attr('refY',0)
+      .attr('markerWidth',5).attr('markerHeight',5).attr('orient','auto')
+      .append('path').attr('d','M0,-4L8,0L0,4')
+      .attr('fill', c.color).attr('opacity',.55);
+  });
+
+  const gHull  = svg.append('g');
+  const gLink  = svg.append('g');
+  const gNode  = svg.append('g');
+  const gLabel = svg.append('g');
+  const gCLbl  = svg.append('g');
+
+  // Cluster labels (static — repelled by cy)
+  gCLbl.selectAll('text').data(Object.values(C)).enter().append('text')
+    .attr('x', d => d.cx).attr('y', d => d.cy - 120)
+    .attr('text-anchor','middle')
+    .attr('font-family','DM Mono,monospace').attr('font-size',9)
+    .attr('letter-spacing','0.12em').attr('fill', d => d.color)
+    .attr('opacity',.65).attr('font-weight','500')
+    .text(d => d.label.toUpperCase());
+
+  // Simulation
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(edges).id(d=>d.id)
+      .distance(d => d.source.cluster === d.target.cluster ? 75 : 160)
+      .strength(.25))
+    .force('charge', d3.forceManyBody().strength(-280))
+    .force('collide', d3.forceCollide().radius(d => d.size + 15).strength(.8))
+    .force('cx', d3.forceX(d => C[d.cluster].cx).strength(.32))
+    .force('cy', d3.forceY(d => C[d.cluster].cy).strength(.32));
+
+  // Links
+  const linkSel = gLink.selectAll('line').data(edges).enter().append('line')
+    .attr('stroke', d => C[d.source.cluster].color)
+    .attr('stroke-opacity', .28).attr('stroke-width', 1.5)
+    .attr('marker-end', d => `url(#arr-${d.source.cluster})`);
+
+  // Nodes
+  let activeId = null;
+
+  const nodeSel = gNode.selectAll('circle').data(nodes).enter().append('circle')
+    .attr('r', d => d.size)
+    .attr('fill', d => C[d.cluster].color).attr('fill-opacity', .12)
+    .attr('stroke', d => C[d.cluster].color).attr('stroke-width', 1.5)
+    .attr('stroke-opacity', .65).style('cursor','pointer')
+    .on('mouseover', function(ev, d) {
+      if (d.id !== activeId) d3.select(this).attr('fill-opacity',.22).attr('stroke-width',2);
+    })
+    .on('mouseout', function(ev, d) {
+      if (d.id !== activeId) d3.select(this).attr('fill-opacity',.12).attr('stroke-width',1.5);
+    })
+    .on('click', function(ev, d) {
+      ev.stopPropagation();
+      activeId = d.id;
+      nodeSel.attr('fill-opacity',.12).attr('stroke-width',1.5).attr('stroke-opacity',.65);
+      d3.select(this).attr('fill-opacity',.32).attr('stroke-width',2.5).attr('stroke-opacity',1);
+      // Highlight connected links
+      linkSel.attr('stroke-opacity', e =>
+        (e.source.id===d.id || e.target.id===d.id) ? .65 : .12
+      ).attr('stroke-width', e =>
+        (e.source.id===d.id || e.target.id===d.id) ? 2 : 1.5
+      );
+      renderPanel(d);
+    })
+    .call(d3.drag()
+      .on('start',(ev,d)=>{ if(!ev.active) sim.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag', (ev,d)=>{ d.fx=ev.x; d.fy=ev.y; })
+      .on('end',  (ev,d)=>{ if(!ev.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+
+  // Labels
+  const lbSel = gLabel.selectAll('text').data(nodes).enter().append('text')
+    .attr('text-anchor','middle').attr('dy', d => d.size + 13)
+    .attr('font-family','DM Mono,monospace').attr('font-size',8)
+    .attr('letter-spacing','0.04em')
+    .attr('fill', d => C[d.cluster].color).attr('opacity',.75)
+    .text(d => d.label).style('pointer-events','none');
+
+  // Hull redraw
+  function redrawHulls() {
+    const pts = {}; Object.keys(C).forEach(k => pts[k]=[]);
+    nodes.forEach(n => {
+      const p = n.size + 30;
+      [[-p,-p],[p,-p],[-p,p],[p,p]].forEach(([dx,dy]) => pts[n.cluster].push([n.x+dx,n.y+dy]));
+    });
+    gHull.selectAll('.hull').remove();
+    Object.entries(pts).forEach(([k,arr]) => {
+      const hull = d3.polygonHull(arr); if (!hull) return;
+      gHull.append('path').attr('class','hull')
+        .attr('d','M'+hull.join('L')+'Z')
+        .attr('fill', C[k].color).attr('fill-opacity',.045)
+        .attr('stroke', C[k].color).attr('stroke-opacity',.16)
+        .attr('stroke-width',1.5).attr('stroke-linejoin','round');
+    });
+  }
+
+  // Tick
+  sim.on('tick', () => {
+    nodes.forEach(n => {
+      n.x = Math.max(n.size+8, Math.min(W-n.size-8, n.x));
+      n.y = Math.max(n.size+8, Math.min(H-n.size-36, n.y));
+    });
+    linkSel
+      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => { const dx=d.target.x-d.source.x, dy=d.target.y-d.source.y, r=Math.hypot(dx,dy)||1; return d.target.x-(dx/r)*(d.target.size+6); })
+      .attr('y2', d => { const dx=d.target.x-d.source.x, dy=d.target.y-d.source.y, r=Math.hypot(dx,dy)||1; return d.target.y-(dy/r)*(d.target.size+6); });
+    nodeSel.attr('cx', d=>d.x).attr('cy', d=>d.y);
+    lbSel.attr('x', d=>d.x).attr('y', d=>d.y);
+    redrawHulls();
+  });
+
+  // Click outside → reset
+  svg.on('click', () => {
+    activeId = null;
+    nodeSel.attr('fill-opacity',.12).attr('stroke-width',1.5).attr('stroke-opacity',.65);
+    linkSel.attr('stroke-opacity',.28).attr('stroke-width',1.5);
+    document.getElementById('sp-body').innerHTML = `
+      <div class="sp-empty">
+        <div class="sp-empty-icon">⬡</div>
+        <div class="sp-empty-title">AI Safety Landscape</div>
+        <div class="sp-empty-body">Click any node to explore how academic research, civil society and policy governance interconnect in child GenAI safety.</div>
+      </div>`;
+  });
+
+  // Panel renderer
+  function renderPanel(d) {
+    const col = C[d.cluster].color;
+    const inE  = edges.filter(e => e.target.id===d.id);
+    const outE = edges.filter(e => e.source.id===d.id);
+    let linksHtml = '';
+    if (inE.length) {
+      linksHtml += `<div class="sp-section"><div class="sp-section-lbl">Receives from</div><div class="sp-links-list">`;
+      inE.forEach(e => {
+        linksHtml += `<div class="sp-link-item"><span class="sp-link-arr">→</span><span><strong>${e.source.label}</strong>${e.label?': '+e.label:''}</span></div>`;
+      });
+      linksHtml += `</div></div>`;
+    }
+    if (outE.length) {
+      linksHtml += `<div class="sp-section"><div class="sp-section-lbl">Feeds into</div><div class="sp-links-list">`;
+      outE.forEach(e => {
+        linksHtml += `<div class="sp-link-item"><span class="sp-link-arr">→</span><span><strong>${e.target.label}</strong>${e.label?': '+e.label:''}</span></div>`;
+      });
+      linksHtml += `</div></div>`;
+    }
+    document.getElementById('sp-body').innerHTML = `
+      <div class="sp-cluster-label" style="color:${col}">${C[d.cluster].label}</div>
+      <div class="sp-node-title">${d.full}</div>
+      <div class="sp-divider" style="background:${col}"></div>
+      <div class="sp-section"><div class="sp-section-lbl">Description</div><div class="sp-desc">${d.desc}</div></div>
+      ${linksHtml}`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  INDUSTRY IMPACT — Slope chart (independent vs industry positive rates)
+// ═══════════════════════════════════════════════════════
+let industryVizBuilt = false;
+
+function buildIndustryViz() {
+  if (industryVizBuilt) return;
+  industryVizBuilt = true;
+
+  const W = window.innerWidth - 320;
+  const H = window.innerHeight - 100;
+  const svg = d3.select('#industry-svg')
+    .attr('width', W).attr('height', H)
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  // Compute industry stats from SPHERES _all / _ind data
+  const rawData = SPHERES.map(s => {
+    const all = s._all, ind = s._ind;
+    const ni = all.n - ind.n;
+    const ni_pos = all.pos - ind.pos;
+    return {
+      id: s.id, label: s.label, color: s.color,
+      n_ind: ind.n, n_industry: ni,
+      ind_pct: ind.n > 0 ? ind.pos / ind.n : 0,
+      industry_pct: ni > 0 ? ni_pos / ni : null,
+      gap: ni > 0 ? (ni_pos / ni) - (ind.pos / ind.n) : null,
+      has_industry: ni > 0
+    };
+  });
+
+  // Sort by ind_pct descending for clean vertical layout
+  const data = rawData.slice().sort((a, b) => b.ind_pct - a.ind_pct);
+
+  const mt = 76, mb = 52, ml = 40, mr = 40;
+  const lx = ml + 130;    // left column x (independent)
+  const rx = W - mr - 130; // right column x (industry)
+  const chartH = H - mt - mb;
+
+  const yMax = 0.85;
+  const yScale = d3.scaleLinear().domain([0, yMax]).range([chartH, 0]);
+
+  // Main group
+  const g = svg.append('g').attr('transform', `translate(0,${mt})`);
+
+  // Title
+  svg.append('text').attr('x', (lx + rx) / 2).attr('y', 22)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', "'DM Serif Display',serif").attr('font-size', 16).attr('fill', '#0f0e0c')
+    .text('Independent vs Industry-Funded Studies');
+  svg.append('text').attr('x', (lx + rx) / 2).attr('y', 40)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', 'DM Mono,monospace').attr('font-size', 9).attr('letter-spacing', '.08em').attr('fill', '#a89880')
+    .text('POSITIVE OUTCOME RATES BY SPHERE · SLOPE = INDUSTRY BIAS DIRECTION');
+
+  // Y gridlines + labels
+  [0, 0.2, 0.4, 0.6, 0.8].forEach(t => {
+    const gy = yScale(t);
+    g.append('line').attr('x1', lx - 18).attr('x2', rx + 18)
+      .attr('y1', gy).attr('y2', gy)
+      .attr('stroke', t === 0 ? '#c8c0b0' : '#e7e3dc')
+      .attr('stroke-width', t === 0 ? 1 : 0.7)
+      .attr('stroke-dasharray', t === 0 ? 'none' : '4 4');
+    g.append('text').attr('x', lx - 24).attr('y', gy + 4)
+      .attr('text-anchor', 'end')
+      .attr('font-family', 'DM Mono,monospace').attr('font-size', 9).attr('fill', '#a89880')
+      .text(Math.round(t * 100) + '%');
+    g.append('text').attr('x', rx + 24).attr('y', gy + 4)
+      .attr('text-anchor', 'start')
+      .attr('font-family', 'DM Mono,monospace').attr('font-size', 9).attr('fill', '#a89880')
+      .text(Math.round(t * 100) + '%');
+  });
+
+  // Column headers
+  const n_ind_total = d3.sum(data, d => d.n_ind);
+  const n_ind_total_str = 'n = ' + n_ind_total + ' studies';
+  const n_ind_total_str2 = 'independent researchers';
+  svg.append('text').attr('x', lx).attr('y', 56)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', 'DM Mono,monospace').attr('font-size', 10).attr('letter-spacing', '.1em').attr('fill', '#3a3830')
+    .text('INDEPENDENT');
+  svg.append('text').attr('x', lx).attr('y', 68)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', 'DM Mono,monospace').attr('font-size', 8).attr('fill', '#a89880')
+    .text(n_ind_total_str);
+
+  const n_ind_str2 = 'n = ' + d3.sum(rawData.filter(d => d.has_industry), d => d.n_industry) + ' studies';
+  svg.append('text').attr('x', rx).attr('y', 56)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', 'DM Mono,monospace').attr('font-size', 10).attr('letter-spacing', '.1em').attr('fill', '#3a3830')
+    .text('INDUSTRY-FUNDED');
+  svg.append('text').attr('x', rx).attr('y', 68)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', 'DM Mono,monospace').attr('font-size', 8).attr('fill', '#a89880')
+    .text(n_ind_str2 + ' across 6 spheres');
+
+  // ── Label collision avoidance ──
+  // Compute initial y from data, then push apart if <15px gap
+  function spreadLabels(items, yFn, minGap) {
+    const pts = items.map(d => ({ d, y: yFn(d) }));
+    pts.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].y - pts[i-1].y < minGap)
+        pts[i].y = pts[i-1].y + minGap;
+    }
+    // Also push upward if went past bottom
+    for (let i = pts.length - 2; i >= 0; i--) {
+      if (pts[i+1].y - pts[i].y < minGap)
+        pts[i].y = pts[i+1].y - minGap;
+    }
+    const map = {};
+    pts.forEach(p => map[p.d.id] = p.y);
+    return map;
+  }
+
+  const leftMap  = spreadLabels(data, d => mt + yScale(d.ind_pct), 16);
+  const rightMap = spreadLabels(
+    data.filter(d => d.has_industry),
+    d => mt + yScale(d.industry_pct),
+    16
+  );
+
+  // ── Draw each sphere ──
+  data.forEach(d => {
+    const y1 = mt + yScale(d.ind_pct);
+
+    // Slope line (only for spheres with industry data)
+    if (d.industry_pct !== null) {
+      const y2 = mt + yScale(d.industry_pct);
+      const lw  = Math.max(1.5, Math.sqrt(d.n_industry) * 0.85);
+      const col = d.gap > 0.04 ? '#166534' : d.gap < -0.04 ? '#991b1b' : '#78716c';
+      svg.append('line').attr('class', 'slope-line')
+        .attr('x1', lx).attr('y1', y1)
+        .attr('x2', rx).attr('y2', y2)
+        .attr('stroke', d.color).attr('stroke-width', lw).attr('stroke-opacity', 0.38);
+      // Industry dot
+      svg.append('circle')
+        .attr('cx', rx).attr('cy', y2).attr('r', 7)
+        .attr('fill', d.color).attr('fill-opacity', 0.9)
+        .attr('stroke', '#fff').attr('stroke-width', 1.5);
+      // Right label (sphere name + gap)
+      const ry = rightMap[d.id] || y2;
+      const gapSign = d.gap >= 0 ? '+' : '';
+      // Tick connector dot→label if needed
+      if (Math.abs(ry - y2) > 5) {
+        svg.append('line')
+          .attr('x1', rx + 9).attr('y1', y2)
+          .attr('x2', rx + 12).attr('y2', ry)
+          .attr('stroke', d.color).attr('stroke-width', 0.7).attr('stroke-opacity', 0.5);
+      }
+      svg.append('text').attr('x', rx + 14).attr('y', ry + 4)
+        .attr('font-family', "'DM Sans',sans-serif").attr('font-size', 10.5).attr('fill', d.color)
+        .text(d.label);
+      svg.append('text').attr('x', rx + 14).attr('y', ry + 15)
+        .attr('font-family', 'DM Mono,monospace').attr('font-size', 8).attr('fill', col)
+        .text(`${gapSign}${Math.round(d.gap * 100)}pp  (n=${d.n_industry})`);
+    }
+
+    // Independent dot (all spheres)
+    svg.append('circle')
+      .attr('cx', lx).attr('cy', y1).attr('r', d.has_industry ? 7 : 5)
+      .attr('fill', d.color).attr('fill-opacity', d.has_industry ? 0.9 : 0.4)
+      .attr('stroke', '#fff').attr('stroke-width', 1.5);
+
+    // Left label
+    const ly = leftMap[d.id] || y1;
+    if (Math.abs(ly - y1) > 5) {
+      svg.append('line')
+        .attr('x1', lx - 9).attr('y1', y1)
+        .attr('x2', lx - 12).attr('y2', ly)
+        .attr('stroke', d.color).attr('stroke-width', 0.7).attr('stroke-opacity', 0.5);
+    }
+    svg.append('text').attr('x', lx - 14).attr('y', ly + 4)
+      .attr('text-anchor', 'end')
+      .attr('font-family', "'DM Sans',sans-serif").attr('font-size', 10.5)
+      .attr('fill', d.color).attr('fill-opacity', d.has_industry ? 1 : 0.5)
+      .text(d.label);
+    svg.append('text').attr('x', lx - 14).attr('y', ly + 15)
+      .attr('text-anchor', 'end')
+      .attr('font-family', 'DM Mono,monospace').attr('font-size', 8).attr('fill', '#a89880')
+      .attr('fill-opacity', d.has_industry ? 1 : 0.5)
+      .text(Math.round(d.ind_pct * 100) + '% pos · n=' + d.n_ind);
+
+    // No-industry note
+    if (!d.has_industry) {
+      svg.append('text').attr('x', rx + 14).attr('y', y1 + 4)
+        .attr('font-family', 'DM Mono,monospace').attr('font-size', 8).attr('fill', '#c8c0b0')
+        .text('no industry studies');
+    }
+  });
+
+  // Neutral reference (dashed horizontal at mean independent rate)
+  const meanInd = d3.mean(data, d => d.ind_pct);
+  const ym = mt + yScale(meanInd);
+  svg.append('line')
+    .attr('x1', lx - 4).attr('x2', rx + 4).attr('y1', ym).attr('y2', ym)
+    .attr('stroke', '#c8c0b0').attr('stroke-width', 0.8).attr('stroke-dasharray', '5 5')
+    .attr('pointer-events', 'none');
+  svg.append('text').attr('x', (lx + rx) / 2).attr('y', ym - 5)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', 'DM Mono,monospace').attr('font-size', 7.5).attr('fill', '#c8c0b0')
+    .text('mean independent rate (' + Math.round(meanInd * 100) + '%)');
+}
+
+// Tab switch controller
+function switchTab(which) {
+  const btns = document.querySelectorAll('.tab-btn');
+  btns[0].classList.toggle('active', which==='spheres');
+  btns[1].classList.toggle('active', which==='industry');
+  btns[2].classList.toggle('active', which==='safety');
+  if(btns[3]) btns[3].classList.toggle('active', which==='mech');
+  const viz         = document.getElementById('viz');
+  const panel       = document.getElementById('panel');
+  const safety      = document.getElementById('tab-safety');
+  const mechTab     = document.getElementById('tab-mech');
+  const industryTab = document.getElementById('tab-industry');
+  // Hide all
+  if(viz) viz.style.display='none';
+  if(panel) panel.style.display='none';
+  safety.classList.remove('open');
+  if(mechTab) mechTab.classList.remove('open');
+  if(industryTab) industryTab.classList.remove('open');
+  if (which==='safety') {
+    safety.classList.add('open');
+    buildSafetyViz();
+  } else if (which==='mech') {
+    if(mechTab) mechTab.classList.add('open');
+    buildMechViz();
+  } else if (which==='industry') {
+    if(industryTab) industryTab.classList.add('open');
+    buildIndustryViz();
+  } else {
+    if(viz) viz.style.display='';
+    if(panel) panel.style.display='';
+    switchView('all');
+  }
+}
+</script>
+
+
+
+
+
+
+
+  <div id="tab-industry">
+    <div id="industry-viz-wrap">
+      <svg id="industry-svg"></svg>
+    </div>
+    <div id="industry-info-panel">
+      <div class="ind-panel-h">Industry Bias Analysis</div>
+      <p class="ind-panel-text">Comparing positive outcome rates between independent researchers and industry-funded or industry-affiliated studies across all 8 KORA developmental spheres.</p>
+
+      <div class="ind-panel-tag">What counts as "industry"</div>
+      <p class="ind-panel-text">A study is classified as industry-affiliated if ≥1 co-author is employed at an AI lab (Google, OpenAI, Microsoft, Meta, Anthropic, etc.) or an edtech builder (Duolingo, Khan Academy, MagicSchool AI, Carnegie Learning, etc.), or if the study discloses industry funding. Classification is based on author affiliations, acknowledgements, and product mentions as reported in the study text.</p>
+
+      <div class="ind-panel-tag">Key findings</div>
+      <div class="ind-stat-row">
+        <span class="ind-stat-lbl">Academic — gap</span>
+        <span class="ind-stat-val pos">+27pp · n=64</span>
+      </div>
+      <div class="ind-stat-row">
+        <span class="ind-stat-lbl">Neurocognitive — gap</span>
+        <span class="ind-stat-val pos">+45pp · n=7 ⚠</span>
+      </div>
+      <div class="ind-stat-row">
+        <span class="ind-stat-lbl">Creative — gap</span>
+        <span class="ind-stat-val pos">+23pp · n=8</span>
+      </div>
+      <div class="ind-stat-row">
+        <span class="ind-stat-lbl">Environmental — gap</span>
+        <span class="ind-stat-val neu">−1pp · n=7</span>
+      </div>
+      <div class="ind-stat-row">
+        <span class="ind-stat-lbl">Affective — gap</span>
+        <span class="ind-stat-val neg">−7pp · n=12</span>
+      </div>
+      <div class="ind-stat-row">
+        <span class="ind-stat-lbl">Psychosocial — gap</span>
+        <span class="ind-stat-val neg">−14pp · n=10</span>
+      </div>
+
+      <div class="ind-panel-tag">Interpretation</div>
+      <p class="ind-panel-text"><strong>Academic, neurocognitive, and creative spheres</strong> show a strong industry positivity bias: industry-funded studies are 1.5–2× more likely to report positive outcomes. This aligns with publication bias and the commercial incentive to demonstrate learning gains.</p>
+      <p class="ind-panel-text"><strong>Affective and psychosocial spheres</strong> show the opposite pattern: industry studies are slightly more likely to report negative or null outcomes. This likely reflects that companies conducting internal safety and wellbeing evaluations find harms they don't publish widely — and independent researchers focusing on these domains are motivated by concern rather than product validation.</p>
+      <p class="ind-panel-text"><strong>Small sample caveat:</strong> Industry sample sizes are 7–64 per sphere. Neurocognitive (+45pp) is based on only 7 industry studies and should be interpreted cautiously.</p>
+
+      <div class="ind-panel-tag">Slope chart guide</div>
+      <p class="ind-panel-text">Each line connects the independent positive rate (left) to the industry positive rate (right) for one sphere. Lines sloping <strong style="color:#166534">upward</strong> = industry more positive. Lines sloping <strong style="color:#991b1b">downward</strong> = industry less positive. Line thickness ∝ √(n industry studies). Faded circles = no industry studies identified.</p>
+    </div>
+  </div>
+
+  <div id="tab-mech">
+    <div id="mech-svg-wrap">
+      <svg id="mech-svg"></svg>
+      <div id="mech-legend">
+        <div class="mech-leg-item"><div class="mech-leg-dot" style="background:#16a34a"></div>Positive mechanism</div>
+        <div class="mech-leg-item"><div class="mech-leg-dot" style="background:#dc2626"></div>Negative mechanism</div>
+        <div class="mech-leg-item"><div class="mech-leg-dot" style="background:#d97706"></div>Conditional</div>
+        <div class="mech-leg-item" style="color:var(--muted);font-size:9px;margin-top:2px">Bubble size = evidence weight</div>
+      </div>
+    </div>
+    <div id="mech-detail-panel">
+      <div id="mech-detail-ph"></div>
+      <div id="mech-detail-body">
+        <div id="mech-empty-state">
+          <div class="mech-empty-icon">⬤</div>
+          <div class="mech-empty-lbl">Click a mechanism bubble<br>to explore the evidence</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CAUSAL MECHANISM MAP — Bubble chart (D3 v7)
+// ═══════════════════════════════════════════════════════
+
+const MECH_DATA = [
+  // ── POSITIVE ──────────────────────────────────────────
+  {id:'cog-scaffold', label:'Cognitive Scaffolding', dir:'pos',
+   score:195, n:60, spheres:['Academic','Neurocognitive','Metacognitive'],
+   desc:'AI provides temporary support calibrated to the learner’s zone of proximal development (ZPD), reducing cognitive overload just enough to make harder tasks accessible while preserving effortful learning. Withdrawn as competence grows.'},
+
+  {id:'feedback-loop', label:'Personalized Feedback Loop', dir:'pos',
+   score:168, n:55, spheres:['Academic'],
+   desc:'Immediate, individualized AI correction at the moment of error → faster detection → encoding of correct patterns. Unlike delayed teacher feedback, AI feedback operates while the mistake is still in working memory.'},
+
+  {id:'attn-training', label:'Adaptive Attentional Training', dir:'pos',
+   score:36, n:12, spheres:['Neurocognitive'],
+   desc:'Game-based AI adapts task difficulty to keep the child in a productive attentional challenge zone. Sustained attention gains documented in RCT evidence (STARS trial, ADHD populations, Cohen\'s d ≈ 0.5).'},
+
+  {id:'emotion-coaching', label:'AI Emotion Coaching', dir:'pos',
+   score:78, n:28, spheres:['Affective'],
+   desc:'Structured AI-mediated emotional support builds self-regulation skills. PACEE and FLORA RCTs show significant gains in emotion recognition and regulation. Meta-analysis (31 RCTs, N=29,637) confirms moderate chatbot effects on anxiety/loneliness.'},
+
+  {id:'empathic-practice', label:'Empathic Practice', dir:'pos',
+   score:20, n:8, spheres:['Psychosocial'],
+   desc:'Low-stakes AI roleplay provides rehearsal space for social-emotional skills without the social consequences of real interactions. RCT (2026) shows transfer to real-world empathic communication after AI practice.'},
+
+  {id:'creative-scaffold', label:'Creative Scaffolding', dir:'pos',
+   score:56, n:18, spheres:['Creative'],
+   desc:'AI scaffolds creative process in music, narrative, and mathematical storytelling. MusicScaffold, Mentigo, and Mathemyths RCTs show significant gains in creative output quality and creative confidence.'},
+
+  {id:'generative-stim', label:'Generative Stimulus', dir:'pos',
+   score:30, n:10, spheres:['Creative'],
+   desc:'AI-generated proposals serve as ideation starting points (muse function). Divergent thinking improves when students actively iterate beyond the AI\'s initial output rather than accepting it passively.'},
+
+  {id:'ai-literacy', label:'Critical AI Literacy', dir:'pos',
+   score:45, n:18, spheres:['Environmental'],
+   desc:'Explicit instruction on AI capabilities and limitations in school curricula builds media discernment, epistemic agency, and resistance to algorithmic manipulation. Benefit conditional on explicit pedagogical design.'},
+
+  // ── CONDITIONAL ───────────────────────────────────────
+  {id:'srl-scaffold', label:'Explicit SRL Scaffolding', dir:'cond',
+   score:18, n:8, spheres:['Metacognitive'],
+   desc:'AI tutors designed with explicit self-regulated learning prompts (monitoring, planning, evaluation) activate metacognitive circuits. Gains are conditional: not observed with generic AI use — requires deliberate metacognitive design.'},
+
+  {id:'sdt-pathways', label:'SDT Autonomy Pathways', dir:'cond',
+   score:28, n:14, spheres:['Affective'],
+   desc:'AI can support intrinsic motivation through autonomy-supportive design (choice, mastery feedback, relatedness cues). The mechanism operates only when all three SDT needs are simultaneously satisfied — common designs satisfy none.'},
+
+  // ── NEGATIVE ──────────────────────────────────────────
+  {id:'cog-subst', label:'Cognitive Substitution', dir:'neg',
+   score:162, n:52, spheres:['Academic','Neurocognitive','Metacognitive'],
+   desc:'AI performs cognitive work the child\'s developing brain would otherwise execute. The substituted neural circuit is not exercised → developmental atrophy or non-acquisition. Operates silently: the child appears competent while dependent.'},
+
+  {id:'assist-paradox', label:'Assistance Paradox', dir:'neg',
+   score:49, n:15, spheres:['Academic'],
+   desc:'Students perform better with AI but collapse without it — a growing gap between apparent and real competence. Key evidence: Bastani et al. (2024, RCT N=1,000+) shows significant performance drop when AI removed.'},
+
+  {id:'alg-arousal', label:'Algorithmic Arousal', dir:'neg',
+   score:231, n:82, spheres:['Affective','Sensorimotor'],
+   desc:'Recommender systems maximise engagement via emotionally activating content (fear, outrage, excitement). This chronically activates the arousal system → dysregulation of affective development. Dominant mechanism behind the net-negative affective sphere score.'},
+
+  {id:'rapid-pacing', label:'Rapid-Pacing Fragmentation', dir:'neg',
+   score:47, n:20, spheres:['Neurocognitive'],
+   desc:'Engagement-optimised AI content conditions rapid attention shifts. Children habituated to fast-switching AI/algorithmic content show disrupted executive function development and reduced tolerance for sustained focus tasks.'},
+
+  {id:'social-disp', label:'Social Displacement', dir:'neg',
+   score:129, n:50, spheres:['Psychosocial','Affective'],
+   desc:'AI interaction time is zero-sum against human interaction time. Hours spent with AI are hours not spent developing human relational skills. Strongest evidence in adolescent populations (Danish QE, 2024; Tølbøll, 2025).'},
+
+  {id:'parasocial', label:'Parasocial Attachment', dir:'neg',
+   score:47, n:20, spheres:['Psychosocial','Affective'],
+   desc:'One-sided emotional bond with AI agents. Unlike human relationships, AI is always available, consistently positive, never reciprocally vulnerable. May distort expectations of real relationships and reduce tolerance for normal human complexity.'},
+
+  {id:'design-fix', label:'Design Fixation', dir:'neg',
+   score:45, n:15, spheres:['Creative'],
+   desc:'Exposure to AI-generated creative proposals anchors subsequent creative production within the AI\'s generative space. Divergent thinking scores (AUT, RAT) decline when students begin with AI rather than independent ideation.'},
+
+  {id:'activity-disp', label:'Activity Displacement', dir:'neg',
+   score:60, n:25, spheres:['Sensorimotor','Psychosocial'],
+   desc:'AI/screen engagement displaces physically active and face-to-face experiences. Opportunity cost is measurable: reduced motor development, increased sedentary behaviour, sleep disruption. Compounded in early childhood.'},
+
+  {id:'body-image', label:'Body Image Violation', dir:'neg',
+   score:35, n:12, spheres:['Sensorimotor'],
+   desc:'AI-generated deepfakes and beauty filters create unattainable body standards and enable non-consensual image manipulation. UNICEF survey (11 countries) documents acute identity trauma from AI-generated NCII affecting minors.'},
+
+  {id:'filter-bubble', label:'Filter Bubble Formation', dir:'neg',
+   score:60, n:25, spheres:['Environmental'],
+   desc:'Algorithmic content curation narrows children\'s information environment, reducing exposure to alternative views and enabling radicalisation pathways. Children growing up with AI curation may never experience undirected information access.'},
+
+  {id:'epist-deleg', label:'Epistemic Delegation', dir:'neg',
+   score:70, n:30, spheres:['Metacognitive','Environmental'],
+   desc:'Children delegate belief formation, argument evaluation, and knowledge synthesis to AI. The metacognitive circuits involved in independent reasoning are underexercised → epistemic dependency. A generational-scale risk if structural.'},
+
+  {id:'illusory-comp', label:'Illusory Competence', dir:'neg',
+   score:25, n:10, spheres:['Metacognitive'],
+   desc:'Students overestimate their own knowledge after AI-assisted performance. Competence appears high with AI support, collapses on transfer tasks without AI. A metacognitive blindspot: the student cannot detect the gap.'},
+];
+
+let mechVizBuilt = false;
+
+function buildMechViz() {
+  if (mechVizBuilt) return;
+  mechVizBuilt = true;
+
+  // Derive dimensions from window — #tab-mech is position:fixed top:100px bottom:0
+  // left:0 right:0, with a 300px detail panel on the right. Don't use clientWidth
+  // because the element may still be display:none when this function is first called.
+  const W = window.innerWidth - 300;
+  const H = window.innerHeight - 100;
+
+  const svg = d3.select('#mech-svg')
+    .attr('width', W)
+    .attr('height', H)
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  // ── Colour & size scales ──
+  const colFill = d => d.dir==='pos'?'rgba(22,163,74,0.18)':d.dir==='neg'?'rgba(220,38,38,0.15)':'rgba(217,119,6,0.18)';
+  const colStroke = d => d.dir==='pos'?'#16a34a':d.dir==='neg'?'#dc2626':'#d97706';
+  const colText  = d => d.dir==='pos'?'#14532d':d.dir==='neg'?'#7f1d1d':'#78350f';
+
+  const maxScore = d3.max(MECH_DATA, d => d.score);
+  const rScale = d3.scaleSqrt().domain([0, maxScore]).range([18, 70]);
+
+  // ── Axis dividers ──
+  const cx = W/2;
+
+  svg.append('line')
+    .attr('x1', cx).attr('y1', 30).attr('x2', cx).attr('y2', H-30)
+    .attr('stroke', 'var(--rule)').attr('stroke-dasharray', '4 4').attr('stroke-width', 1);
+
+  svg.append('text').attr('class','mech-axis-lbl').attr('x', cx/2).attr('y', 22)
+    .attr('text-anchor','middle').text('POSITIVE EVIDENCE');
+  svg.append('text').attr('class','mech-axis-lbl').attr('x', cx + cx/2).attr('y', 22)
+    .attr('text-anchor','middle').text('NEGATIVE EVIDENCE');
+
+  // ── Simulation ──
+  const nodes = MECH_DATA.map(d => ({
+    ...d,
+    r: rScale(d.score),
+    // Initial x biased by direction
+    x: d.dir==='pos' ? W*0.25 : d.dir==='neg' ? W*0.75 : W*0.5,
+    y: H/2 + (Math.random()-0.5)*100,
+  }));
+
+  const sim = d3.forceSimulation(nodes)
+    .force('x', d3.forceX(d => d.dir==='pos' ? W*0.27 : d.dir==='neg' ? W*0.73 : W*0.5).strength(0.35))
+    .force('y', d3.forceY(H/2).strength(0.12))
+    .force('collide', d3.forceCollide(d => d.r + 5).strength(0.9).iterations(4))
+    .force('boundary', () => {
+      nodes.forEach(d => {
+        d.x = Math.max(d.r+8, Math.min(W-d.r-8, d.x));
+        d.y = Math.max(d.r+30, Math.min(H-d.r-8, d.y));
+        // Keep pos on left of center, neg on right
+        if (d.dir==='pos' && d.x > cx - d.r - 4) d.x = cx - d.r - 4;
+        if (d.dir==='neg' && d.x < cx + d.r + 4) d.x = cx + d.r + 4;
+      });
+    })
+    .stop();
+
+  // Run sim offline for initial layout
+  for (let i=0; i<200; i++) sim.tick();
+
+  // ── Draw bubbles ──
+  const bubbleG = svg.append('g').attr('class','bubbles');
+
+  const node = bubbleG.selectAll('.mech-node')
+    .data(nodes)
+    .join('g')
+    .attr('class','mech-node')
+    .attr('transform', d => `translate(${d.x},${d.y})`)
+    .style('cursor','pointer')
+    .on('click', (e, d) => showMechDetail(d))
+    .on('mouseenter', function(e, d) {
+      d3.select(this).select('circle')
+        .transition().duration(120)
+        .attr('r', d.r * 1.08)
+        .attr('stroke-width', 2.5);
+    })
+    .on('mouseleave', function(e, d) {
+      d3.select(this).select('circle')
+        .transition().duration(120)
+        .attr('r', d.r)
+        .attr('stroke-width', 1.5);
+    });
+
+  node.append('circle')
+    .attr('r', d => d.r)
+    .attr('fill', colFill)
+    .attr('stroke', colStroke)
+    .attr('stroke-width', 1.5);
+
+  // Label: split into lines if needed
+  node.each(function(d) {
+    const g = d3.select(this);
+    const words = d.label.split(' ');
+    const lineH = 12;
+    // Fit text into bubble: max chars ~ r*0.35
+    const maxChars = Math.floor(d.r * 0.7);
+    const lines = [];
+    let cur = '';
+    words.forEach(w => {
+      if ((cur + (cur?' ':'') + w).length <= maxChars) {
+        cur += (cur?' ':'') + w;
+      } else {
+        if (cur) lines.push(cur);
+        cur = w;
+      }
+    });
+    if (cur) lines.push(cur);
+    const totalH = lines.length * lineH;
+    const startY = -totalH/2 + lineH*0.5;
+    lines.forEach((line, i) => {
+      g.append('text')
+        .attr('class','mech-bubble-lbl')
+        .attr('x', 0).attr('y', startY + i*lineH)
+        .attr('text-anchor','middle').attr('dominant-baseline','middle')
+        .attr('font-family','DM Sans,sans-serif')
+        .attr('font-size', d.r > 40 ? 10 : d.r > 28 ? 9 : 8)
+        .attr('font-weight', 600)
+        .attr('fill', colText(d))
+        .text(line);
+    });
+    // Score badge inside bubble (bottom)
+    if (d.r > 35) {
+      g.append('text')
+        .attr('x', 0).attr('y', d.r - 12)
+        .attr('text-anchor','middle').attr('dominant-baseline','middle')
+        .attr('font-family','DM Mono,monospace').attr('font-size', 8)
+        .attr('fill', colText(d)).attr('opacity', 0.7)
+        .text(`${d.n} studies`);
+    }
+  });
+
+  // Run live sim for smooth settling
+  sim.on('tick', () => {
+    node.attr('transform', d => `translate(${d.x},${d.y})`);
+  }).restart().alpha(0.4);
+}
+
+function showMechDetail(d) {
+  const ph = document.getElementById('mech-detail-ph');
+  const body = document.getElementById('mech-detail-body');
+  const empty = document.getElementById('mech-empty-state');
+
+  if (empty) empty.style.display = 'none';
+  ph.style.display = 'block';
+
+  const dirLabel = d.dir==='pos'?'Positive mechanism':d.dir==='neg'?'Negative mechanism':'Conditional mechanism';
+  const dirIcon  = d.dir==='pos'?'↑':d.dir==='neg'?'↓':'~';
+  const score = d.dir==='neg' ? -d.score : d.score;
+
+  ph.innerHTML = `
+    <div class="mech-dp-tag">Causal Mechanism · ${d.id}</div>
+    <div class="mech-dp-title">${d.label}</div>
+    <span class="mech-dp-dir ${d.dir}">${dirIcon} ${dirLabel}</span>
+  `;
+
+  const sphereTags = d.spheres.map(s => `<span class="mech-sphere-tag">${s}</span>`).join('');
+
+  body.innerHTML = `
+    <p class="mech-dp-desc">${d.desc}</p>
+    <div class="mech-dp-row"><span class="mech-dp-key">Evidence score</span><span class="mech-dp-val">${score > 0 ? '+' : ''}${score} pts</span></div>
+    <div class="mech-dp-row"><span class="mech-dp-key">Studies</span><span class="mech-dp-val">${d.n}</span></div>
+    <div class="mech-dp-row"><span class="mech-dp-key">Spheres concerned</span><span class="mech-dp-val">${sphereTags}</span></div>
+    <div class="mech-dp-row">
+      <span class="mech-dp-key">Przybylski requirement</span>
+      <span class="mech-dp-val" style="font-size:10px;font-weight:400">
+        ${d.dir==='cond'
+          ? 'Conditional — theory specification requires context bounds'
+          : 'Theory specification (Step 3) — mechanism must be stated a priori'}
+      </span>
+    </div>
+    <hr style="border:none;border-top:1px dashed var(--rule);margin:12px 0">
+    <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Evidence weight formula</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--ink);line-height:1.7;background:var(--paper);padding:10px;border-radius:4px;">
+      strict×5 + moderate×3 + loose×0.1<br>
+      Net score: <strong>${score > 0 ? '+' : ''}${score} pts</strong>
+    </div>
+  `;
+
+  // Highlight selected bubble
+  d3.selectAll('.mech-node circle')
+    .attr('stroke-width', n => n.id === d.id ? 3 : 1.5)
+    .attr('stroke-dasharray', n => n.id === d.id ? 'none' : 'none');
+}
+</script>
+
+</body>
+</html>
